@@ -11,3 +11,10 @@ frontend/.next/
 
 # Mac
 .DS_Store
+backend/.venv/
+.venv/
+**/__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+.next/
