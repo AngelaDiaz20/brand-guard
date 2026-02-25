@@ -1,57 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 
-import { ProgressScreen } from "@/components/analysis/ProgressScreen";
-import { ImagePreview } from "@/components/preview/ImagePreview";
-import { ResultsScreen } from "@/components/results/ResultsScreen";
-import { UploadArea } from "@/components/upload/UploadArea";
-import { analyzeImage } from "@/lib/api";
-import type { AnalyzeResponse, AppStatus } from "@/types/analysis";
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Ocurrio un error inesperado durante el analisis.";
-}
+const ANALYZE_ENDPOINT = "http://127.0.0.1:8000/analyze";
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<AppStatus>("idle");
-  const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<AnalyzeResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const isBusy = status === "uploading" || status === "analyzing";
-
-  const progressPhase = useMemo(() => {
-    if (status === "uploading") {
-      return "uploading" as const;
-    }
-
-    return "analyzing" as const;
-  }, [status]);
-
-  const stopTicker = () => {
-    if (!tickerRef.current) {
-      return;
-    }
-
-    clearInterval(tickerRef.current);
-    tickerRef.current = null;
-  };
-
-  useEffect(() => {
-    return () => {
-      if (tickerRef.current) {
-        clearInterval(tickerRef.current);
-      }
-    };
-  }, []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -61,12 +20,24 @@ export default function HomePage() {
     };
   }, [previewUrl]);
 
-  const resetFlow = () => {
-    stopTicker();
-    setStatus("idle");
-    setProgress(0);
+  const applySelectedFile = (file: File) => {
+    setSelectedFile(file);
     setResult(null);
-    setErrorMessage(null);
+    setLoading(false);
+    setPreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return URL.createObjectURL(file);
+    });
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) {
+      return;
+    }
+    applySelectedFile(file);
   };
 
   const handleAnalyze = async () => {
@@ -74,88 +45,257 @@ export default function HomePage() {
       return;
     }
 
-    resetFlow();
-    setStatus("uploading");
-    setProgress(5);
-
-    tickerRef.current = setInterval(() => {
-      setProgress((current) => {
-        if (current >= 95) {
-          return current;
-        }
-        return current + 2;
-      });
-    }, 280);
+    setLoading(true);
 
     try {
-      const response = await analyzeImage(selectedFile, (uploadPercent) => {
-        setProgress((current) => {
-          const uploadProgress = Math.min(75, Math.round(uploadPercent * 0.75));
-          return Math.max(current, uploadProgress);
-        });
+      const formData = new FormData();
+      formData.append("file", selectedFile);
 
-        if (uploadPercent >= 100) {
-          setStatus("analyzing");
-        }
+      const response = await fetch(ANALYZE_ENDPOINT, {
+        method: "POST",
+        body: formData
       });
 
-      setStatus("analyzing");
-      setProgress((current) => Math.max(current, 96));
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        const detail =
+          typeof errorPayload?.detail === "string"
+            ? errorPayload.detail
+            : "Error while analyzing image.";
+        throw new Error(detail);
+      }
 
-      setResult(response);
-      setProgress(100);
-      setStatus("success");
+      const data = await response.json();
+      setResult(data);
     } catch (error) {
-      setStatus("error");
-      setErrorMessage(getErrorMessage(error));
+      console.error("Analyze request failed:", error);
+      setResult(null);
     } finally {
-      stopTicker();
+      setLoading(false);
     }
   };
 
+  const handleReset = () => {
+    setResult(null);
+    setSelectedFile(null);
+    setLoading(false);
+    setPreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return null;
+    });
+  };
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
-      <header>
-        <h1 className="mt-1 text-3xl font-bold text-slate-900">Analizador Técnico de Imágenes</h1>
+    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <header className="mb-8">
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">FastAPI + Next.js</p>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Image Analysis Console</h1>
       </header>
 
-      <UploadArea
-        selectedFile={selectedFile}
-        isBusy={isBusy}
-        onFileSelected={(file) => {
-          setPreviewUrl(URL.createObjectURL(file));
-          setSelectedFile(file);
-          setResult(null);
-          setErrorMessage(null);
-          setStatus("idle");
-          setProgress(0);
-        }}
-        onAnalyze={handleAnalyze}
-      />
+      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Input</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Select or drop an image and run the backend analysis.
+          </p>
 
-      {previewUrl && <ImagePreview imageUrl={previewUrl} />}
-
-      {isBusy && <ProgressScreen progress={progress} fileName={selectedFile?.name} phase={progressPhase} />}
-
-      {status === "error" && errorMessage && (
-        <section className="rounded-2xl border border-red-200 bg-red-50 p-4">
-          <h2 className="text-sm font-semibold text-red-800">Error de analisis</h2>
-          <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
-        </section>
-      )}
-
-      {status === "success" && result && (
-        <>
-          <ResultsScreen result={result} />
-          <button
-            type="button"
-            onClick={resetFlow}
-            className="self-start rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          <label
+            className="mt-5 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-slate-400"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const file = event.dataTransfer.files?.[0];
+              if (!file || !file.type.startsWith("image/")) {
+                return;
+              }
+              applySelectedFile(file);
+            }}
           >
-            Nuevo análisis
-          </button>
-        </>
-      )}
+            <span className="text-sm font-medium text-slate-700">Drag and drop image</span>
+            <span className="mt-1 text-xs text-slate-500">or click to choose file</span>
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </label>
+
+          {selectedFile && (
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="truncate text-sm font-medium text-slate-900">{selectedFile.name}</p>
+              <p className="mt-1 text-xs text-slate-500">{(selectedFile.size / 1024).toFixed(2)} KB</p>
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-2">
+            <button
+              type="button"
+              onClick={handleAnalyze}
+              disabled={!selectedFile || loading}
+              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Analizando..." : "Analizar"}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Nuevo analisis
+            </button>
+          </div>
+
+          {previewUrl && (
+            <div className="mt-5 rounded-xl bg-gray-100 p-4 shadow-inner">
+              <div className="rounded-xl bg-white p-3 shadow-md">
+                <Image
+                  src={previewUrl}
+                  alt="Selected preview"
+                  width={1600}
+                  height={900}
+                  unoptimized
+                  className="h-auto max-h-[500px] w-full rounded-lg object-contain"
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {!loading && !result && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+              No analysis yet. Upload an image and click Analyze.
+            </div>
+          )}
+
+          {loading && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-8 text-center text-sm font-medium text-blue-700">
+              Analizando...
+            </div>
+          )}
+
+          {result && (
+            <div className="space-y-6">
+              <section className="rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Metadata</h3>
+                <dl className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-slate-500">Filename</dt>
+                    <dd className="font-medium">{result?.meta?.filename ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Format</dt>
+                    <dd className="font-medium">{result?.meta?.format ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Resolution</dt>
+                    <dd className="font-medium">
+                      {result?.meta?.width ?? "-"} x {result?.meta?.height ?? "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Aspect ratio</dt>
+                    <dd className="font-medium">{result?.meta?.aspectRatio ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">File size</dt>
+                    <dd className="font-medium">
+                      {typeof result?.meta?.fileSizeKb === "number"
+                        ? `${result.meta.fileSizeKb.toFixed(2)} KB`
+                        : "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Color mode</dt>
+                    <dd className="font-medium">{result?.meta?.colorMode ?? "-"}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
+                  Technical Validation
+                </h3>
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                  {[
+                    { key: "formatAllowed", label: "Format allowed" },
+                    { key: "dimensionsValid", label: "Dimensions valid" },
+                    { key: "fileSizeValid", label: "File size valid" }
+                  ].map((item) => {
+                    const ok = Boolean(result?.technicalValidation?.[item.key]);
+                    return (
+                      <div
+                        key={item.key}
+                        className={`rounded-lg border px-3 py-2 ${
+                          ok
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-red-200 bg-red-50 text-red-700"
+                        }`}
+                      >
+                        <p className="text-xs uppercase tracking-wide">{item.label}</p>
+                        <p className="mt-1 text-sm font-semibold">{ok ? "OK" : "ERROR"}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
+                  Dominant Colors
+                </h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {(result?.visualAnalysis?.dominantColors ??
+                    result?.colorAnalysis?.dominantColors ??
+                    []
+                  ).map((color: { hex: string; percentage: number }) => (
+                    <div key={`${color.hex}-${color.percentage}`} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <div
+                        className="h-10 w-10 rounded-md border border-slate-200"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{color.hex}</p>
+                        <p className="text-xs text-slate-500">
+                          {typeof color.percentage === "number" ? color.percentage.toFixed(1) : "0.0"}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">OCR</h3>
+                <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                  {result?.ocr?.fullText || "No text detected."}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(result?.ocr?.words ?? []).map(
+                    (
+                      word: { text: string; confidence: number; box: [number, number, number, number] },
+                      index: number
+                    ) => (
+                      <div
+                        key={`${word.text}-${index}`}
+                        className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium text-slate-900">{word.text}</span>
+                          <span className="text-xs text-slate-500">
+                            confidence: {Number(word.confidence ?? 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          box: [{(word.box ?? []).join(", ")}]
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
