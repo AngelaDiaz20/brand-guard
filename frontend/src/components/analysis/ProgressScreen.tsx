@@ -15,7 +15,7 @@ export function ProgressScreen({ progress, fileName, phase }: ProgressScreenProp
   return (
     <SectionCard>
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">Progreso de analisis</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Progreso de análisis</h2>
         <span className="text-sm font-semibold text-brand-700">{progress}%</span>
       </div>
 

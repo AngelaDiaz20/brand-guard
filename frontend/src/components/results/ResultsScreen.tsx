@@ -1,6 +1,7 @@
 import type { AnalyzeResponse } from "@/types/analysis";
 import { calculateScore, getValidationItems } from "@/utils/analysis";
 
+import { ColorPalette } from "@/components/results/ColorPalette";
 import { MetadataPanel } from "@/components/results/MetadataPanel";
 import { ScoreCard } from "@/components/results/ScoreCard";
 import { ValidationCard } from "@/components/results/ValidationCard";
@@ -13,6 +14,7 @@ export function ResultsScreen({ result }: ResultsScreenProps) {
   const validationItems = getValidationItems(result.technicalValidation);
   const passed = validationItems.filter((item) => item.ok).length;
   const score = calculateScore(result.technicalValidation);
+  const dominantColors = result.colorAnalysis?.dominantColors ?? [];
 
   return (
     <div className="space-y-6">
@@ -20,6 +22,8 @@ export function ResultsScreen({ result }: ResultsScreenProps) {
         <MetadataPanel metadata={result.meta} />
         <ScoreCard score={score} passedChecks={passed} totalChecks={validationItems.length} />
       </div>
+
+      {dominantColors.length > 0 && <ColorPalette dominantColors={dominantColors} />}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">Validaciones tecnicas</h3>

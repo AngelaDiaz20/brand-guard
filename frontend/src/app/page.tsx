@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ProgressScreen } from "@/components/analysis/ProgressScreen";
+import { ImagePreview } from "@/components/preview/ImagePreview";
 import { ResultsScreen } from "@/components/results/ResultsScreen";
 import { UploadArea } from "@/components/upload/UploadArea";
 import { analyzeImage } from "@/lib/api";
@@ -18,6 +19,7 @@ function getErrorMessage(error: unknown): string {
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<AppStatus>("idle");
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
@@ -50,6 +52,14 @@ export default function HomePage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const resetFlow = () => {
     stopTicker();
@@ -106,23 +116,14 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
       <header>
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
-          Frontend Next.js + FastAPI
-        </p>
-        <h1 className="mt-1 text-3xl font-bold text-slate-900">Analizador Tecnico de Imagenes</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Carga una imagen para validar metadata y requisitos tecnicos con el endpoint
-          <span className="mx-1 rounded bg-slate-200 px-1.5 py-0.5 font-mono text-xs text-slate-700">
-            POST /analyze
-          </span>
-          en FastAPI.
-        </p>
+        <h1 className="mt-1 text-3xl font-bold text-slate-900">Analizador Técnico de Imágenes</h1>
       </header>
 
       <UploadArea
         selectedFile={selectedFile}
         isBusy={isBusy}
         onFileSelected={(file) => {
+          setPreviewUrl(URL.createObjectURL(file));
           setSelectedFile(file);
           setResult(null);
           setErrorMessage(null);
@@ -131,6 +132,8 @@ export default function HomePage() {
         }}
         onAnalyze={handleAnalyze}
       />
+
+      {previewUrl && <ImagePreview imageUrl={previewUrl} />}
 
       {isBusy && <ProgressScreen progress={progress} fileName={selectedFile?.name} phase={progressPhase} />}
 
@@ -149,7 +152,7 @@ export default function HomePage() {
             onClick={resetFlow}
             className="self-start rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
-            Nuevo analisis
+            Nuevo análisis
           </button>
         </>
       )}

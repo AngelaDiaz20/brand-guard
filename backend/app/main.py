@@ -5,7 +5,8 @@ from pathlib import Path
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware  # 👈 IMPORTANTE
 
-from app.models.response_model import AnalyzeResponse
+from app.models.response_model import AnalyzeResponse, VisualAnalysisResponse
+from app.services.color_analysis_service import extract_dominant_colors
 from app.services.guideline_validator import (
     load_guidelines,
     validate_technical_requirements,
@@ -38,7 +39,12 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
         filename=file.filename or "unknown",
         file_size_kb=file_size_kb,
     )
+    dominant_colors = extract_dominant_colors(file_bytes)
     guidelines = load_guidelines(GUIDELINES_PATH)
     validation = validate_technical_requirements(metadata, guidelines)
 
-    return AnalyzeResponse(meta=metadata, technical_validation=validation)
+    return AnalyzeResponse(
+        meta=metadata,
+        technical_validation=validation,
+        visual_analysis=VisualAnalysisResponse(dominant_colors=dominant_colors),
+    )

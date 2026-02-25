@@ -15,9 +15,19 @@ export interface TechnicalValidation {
   fileSizeValid: boolean;
 }
 
+export interface ColorItem {
+  hex: string;
+  percentage: number;
+}
+
+export interface ColorAnalysis {
+  dominantColors: ColorItem[];
+}
+
 export interface AnalyzeResponse {
   meta: Metadata;
   technicalValidation: TechnicalValidation;
+  colorAnalysis: ColorAnalysis;
 }
 
 export interface ValidationItem {

@@ -28,6 +28,22 @@ class TechnicalValidationResponse(BaseModel):
     file_size_valid: bool = Field(alias="fileSizeValid")
 
 
+class ColorInfo(BaseModel):
+    """Dominant color information."""
+
+    hex: str
+    rgb: tuple[int, int, int]
+    percentage: float
+
+
+class VisualAnalysisResponse(BaseModel):
+    """Visual analysis payload."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    dominant_colors: list[ColorInfo] = Field(alias="dominantColors")
+
+
 class AnalyzeResponse(BaseModel):
     """Top-level response payload for /analyze."""
 
@@ -35,3 +51,4 @@ class AnalyzeResponse(BaseModel):
 
     meta: MetaResponse
     technical_validation: TechnicalValidationResponse = Field(alias="technicalValidation")
+    visual_analysis: VisualAnalysisResponse = Field(alias="visualAnalysis")

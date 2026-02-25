@@ -13,6 +13,43 @@ export class ApiError extends Error {
   }
 }
 
+type RawColor = {
+  hex?: unknown;
+  percentage?: unknown;
+};
+
+type RawAnalyzeResponse = {
+  meta?: AnalyzeResponse["meta"];
+  technicalValidation?: AnalyzeResponse["technicalValidation"];
+  colorAnalysis?: { dominantColors?: RawColor[] };
+  visualAnalysis?: { dominantColors?: RawColor[] };
+};
+
+function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
+  const response = (payload ?? {}) as RawAnalyzeResponse;
+  const fromColorAnalysis = response.colorAnalysis?.dominantColors;
+  const fromVisualAnalysis = response.visualAnalysis?.dominantColors;
+  const colors = (fromColorAnalysis ?? fromVisualAnalysis ?? [])
+    .filter(
+      (item): item is { hex: string; percentage: number } =>
+        typeof item?.hex === "string" &&
+        typeof item?.percentage === "number" &&
+        Number.isFinite(item.percentage)
+    )
+    .map((item) => ({
+      hex: item.hex,
+      percentage: item.percentage
+    }));
+
+  return {
+    meta: response.meta as AnalyzeResponse["meta"],
+    technicalValidation: response.technicalValidation as AnalyzeResponse["technicalValidation"],
+    colorAnalysis: {
+      dominantColors: colors
+    }
+  };
+}
+
 export function analyzeImage(
   file: File,
   onProgress?: (progressPercent: number) => void
@@ -51,7 +88,7 @@ export function analyzeImage(
       }
 
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(responseBody as AnalyzeResponse);
+        resolve(normalizeAnalyzeResponse(responseBody));
         return;
       }
 

@@ -48,9 +48,6 @@ export function UploadArea({
     <SectionCard>
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-slate-900">Cargar imagen</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Arrastra una imagen o selecciona un archivo para analizarlo con FastAPI.
-        </p>
       </div>
 
       <div

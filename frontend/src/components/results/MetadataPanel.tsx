@@ -10,7 +10,7 @@ interface MetadataPanelProps {
 export function MetadataPanel({ metadata }: MetadataPanelProps) {
   return (
     <SectionCard>
-      <h3 className="text-lg font-semibold text-slate-900">Metadata basica</h3>
+      <h3 className="text-lg font-semibold text-slate-900">Metadata básica</h3>
       <dl className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-700 sm:grid-cols-2">
         <div>
           <dt className="text-xs uppercase tracking-wide text-slate-500">Nombre</dt>
@@ -21,17 +21,17 @@ export function MetadataPanel({ metadata }: MetadataPanelProps) {
           <dd className="font-medium">{metadata.format}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Tamano</dt>
+          <dt className="text-xs uppercase tracking-wide text-slate-500">Tamaño</dt>
           <dd className="font-medium">{metadata.fileSizeKb.toFixed(2)} KB ({toMegaBytes(metadata.fileSizeKb)})</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Resolucion</dt>
+          <dt className="text-xs uppercase tracking-wide text-slate-500">Resolución</dt>
           <dd className="font-medium">
             {metadata.width} x {metadata.height}
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Aspect Ratio</dt>
+          <dt className="text-xs uppercase tracking-wide text-slate-500">Relación aspecto</dt>
           <dd className="font-medium">{metadata.aspectRatio}</dd>
         </div>
         <div>
