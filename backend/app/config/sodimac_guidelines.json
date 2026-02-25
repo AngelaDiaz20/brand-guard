@@ -1,0 +1,12 @@
+{
+  "brand": "Sodimac",
+  "technical_requirements": {
+    "min_width_px": 1080,
+    "min_height_px": 1080,
+    "allowed_formats": [
+      "JPEG",
+      "PNG"
+    ],
+    "max_file_size_mb": 5
+  }
+}
