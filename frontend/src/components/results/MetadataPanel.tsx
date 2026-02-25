@@ -35,8 +35,8 @@ export function MetadataPanel({ metadata }: MetadataPanelProps) {
           <dd className="font-medium">{metadata.aspectRatio}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">ICC</dt>
-          <dd className="font-medium">{metadata.iccProfile ?? "No disponible"}</dd>
+          <dt className="text-xs uppercase tracking-wide text-slate-500">Color Profile</dt>
+          <dd className="font-medium">{metadata.iccProfile ?? "Unknown"}</dd>
         </div>
       </dl>
     </SectionCard>

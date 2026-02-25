@@ -24,10 +24,22 @@ export interface ColorAnalysis {
   dominantColors: ColorItem[];
 }
 
+export interface OCRWord {
+  text: string;
+  box: [number, number, number, number];
+  confidence: number;
+}
+
+export interface OCRResponse {
+  fullText: string;
+  words: OCRWord[];
+}
+
 export interface AnalyzeResponse {
   meta: Metadata;
   technicalValidation: TechnicalValidation;
   colorAnalysis: ColorAnalysis;
+  ocr: OCRResponse | null;
 }
 
 export interface ValidationItem {

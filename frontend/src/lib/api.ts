@@ -1,4 +1,4 @@
-import type { AnalyzeResponse } from "@/types/analysis";
+import type { AnalyzeResponse, OCRWord } from "@/types/analysis";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze`;
@@ -18,11 +18,21 @@ type RawColor = {
   percentage?: unknown;
 };
 
+type RawOcrWord = {
+  text?: unknown;
+  box?: unknown;
+  confidence?: unknown;
+};
+
 type RawAnalyzeResponse = {
   meta?: AnalyzeResponse["meta"];
   technicalValidation?: AnalyzeResponse["technicalValidation"];
   colorAnalysis?: { dominantColors?: RawColor[] };
   visualAnalysis?: { dominantColors?: RawColor[] };
+  ocr?: {
+    fullText?: unknown;
+    words?: RawOcrWord[];
+  } | null;
 };
 
 function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
@@ -41,12 +51,37 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
       percentage: item.percentage
     }));
 
+  const normalizedOcrWords: OCRWord[] = (response.ocr?.words ?? [])
+    .filter(
+      (word): word is { text: string; box: [number, number, number, number]; confidence: number } =>
+        typeof word?.text === "string" &&
+        Array.isArray(word.box) &&
+        word.box.length === 4 &&
+        word.box.every((point) => typeof point === "number" && Number.isFinite(point)) &&
+        typeof word.confidence === "number" &&
+        Number.isFinite(word.confidence)
+    )
+    .map((word) => ({
+      text: word.text,
+      box: [word.box[0], word.box[1], word.box[2], word.box[3]],
+      confidence: word.confidence
+    }));
+
+  const normalizedOcr =
+    response.ocr && typeof response.ocr.fullText === "string"
+      ? {
+          fullText: response.ocr.fullText,
+          words: normalizedOcrWords
+        }
+      : null;
+
   return {
     meta: response.meta as AnalyzeResponse["meta"],
     technicalValidation: response.technicalValidation as AnalyzeResponse["technicalValidation"],
     colorAnalysis: {
       dominantColors: colors
-    }
+    },
+    ocr: normalizedOcr
   };
 }
 

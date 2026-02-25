@@ -1,38 +1,53 @@
 import type { AnalyzeResponse } from "@/types/analysis";
 import { calculateScore, getValidationItems } from "@/utils/analysis";
 
+import { OCRPanel } from "@/components/results/OCRPanel";
 import { ColorPalette } from "@/components/results/ColorPalette";
 import { MetadataPanel } from "@/components/results/MetadataPanel";
 import { ScoreCard } from "@/components/results/ScoreCard";
 import { ValidationCard } from "@/components/results/ValidationCard";
 
 interface ResultsScreenProps {
-  result: AnalyzeResponse;
+  data: AnalyzeResponse;
 }
 
-export function ResultsScreen({ result }: ResultsScreenProps) {
-  const validationItems = getValidationItems(result.technicalValidation);
+export function ResultsScreen({ data }: ResultsScreenProps) {
+  const validationItems = getValidationItems(data.technicalValidation);
   const passed = validationItems.filter((item) => item.ok).length;
-  const score = calculateScore(result.technicalValidation);
-  const dominantColors = result.colorAnalysis?.dominantColors ?? [];
+  const score = calculateScore(data.technicalValidation);
+  const dominantColors = data.colorAnalysis?.dominantColors ?? [];
+  const ocrText = data.ocr?.fullText ?? "";
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <MetadataPanel metadata={result.meta} />
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="lg:col-span-2">
         <ScoreCard score={score} passedChecks={passed} totalChecks={validationItems.length} />
       </div>
+     
+      <div className="lg:col-span-2">
+        <MetadataPanel metadata={data.meta} />
+      </div>
+    
+      {dominantColors.length > 0 && (
+        <div className="lg:col-span-2">
+          <ColorPalette dominantColors={dominantColors} />
+        </div>
+      )}
 
-      {dominantColors.length > 0 && <ColorPalette dominantColors={dominantColors} />}
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">Validaciones tecnicas</h3>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+        <h3 className="text-lg font-semibold text-slate-900">Validaciones técnicas</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {validationItems.map((item) => (
             <ValidationCard key={item.key} item={item} />
           ))}
         </div>
       </section>
+
+      {ocrText.trim() && (
+        <div className="lg:col-span-2">
+          <OCRPanel text={ocrText} />
+        </div>
+      )}
     </div>
   );
 }
