@@ -90,15 +90,15 @@ export default function HomePage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <header className="mb-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">FastAPI + Next.js</p>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Image Analysis Console</h1>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">SODIMAC</p>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Análisis de imagen</h1>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Input</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Entrada</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Select or drop an image and run the backend analysis.
+            Seleccione o suelte una imagen
           </p>
 
           <label
@@ -113,8 +113,8 @@ export default function HomePage() {
               applySelectedFile(file);
             }}
           >
-            <span className="text-sm font-medium text-slate-700">Drag and drop image</span>
-            <span className="mt-1 text-xs text-slate-500">or click to choose file</span>
+            <span className="text-sm font-medium text-slate-700">Arrastrar y soltar imagen</span>
+            <span className="mt-1 text-xs text-slate-500">o haga clic para elegir el archivo</span>
             <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           </label>
 
@@ -162,7 +162,7 @@ export default function HomePage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           {!loading && !result && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-              No analysis yet. Upload an image and click Analyze.
+              Aún no hay análisis. Sube una imagen y haz clic en "Analizar".
             </div>
           )}
 
@@ -178,25 +178,25 @@ export default function HomePage() {
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Metadata</h3>
                 <dl className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
                   <div>
-                    <dt className="text-xs text-slate-500">Filename</dt>
+                    <dt className="text-xs text-slate-500">Nombre</dt>
                     <dd className="font-medium">{result?.meta?.filename ?? "-"}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">Format</dt>
+                    <dt className="text-xs text-slate-500">Formato</dt>
                     <dd className="font-medium">{result?.meta?.format ?? "-"}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">Resolution</dt>
+                    <dt className="text-xs text-slate-500">Resolucion</dt>
                     <dd className="font-medium">
                       {result?.meta?.width ?? "-"} x {result?.meta?.height ?? "-"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">Aspect ratio</dt>
+                    <dt className="text-xs text-slate-500">Radio aspecto</dt>
                     <dd className="font-medium">{result?.meta?.aspectRatio ?? "-"}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">File size</dt>
+                    <dt className="text-xs text-slate-500">Tamaño</dt>
                     <dd className="font-medium">
                       {typeof result?.meta?.fileSizeKb === "number"
                         ? `${result.meta.fileSizeKb.toFixed(2)} KB`
@@ -204,7 +204,7 @@ export default function HomePage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">Color mode</dt>
+                    <dt className="text-xs text-slate-500">Modo de color</dt>
                     <dd className="font-medium">{result?.meta?.colorMode ?? "-"}</dd>
                   </div>
                 </dl>
