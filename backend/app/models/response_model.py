@@ -44,6 +44,23 @@ class VisualAnalysisResponse(BaseModel):
     dominant_colors: list[ColorInfo] = Field(alias="dominantColors")
 
 
+class OCRWord(BaseModel):
+    """Detected OCR word."""
+
+    text: str
+    box: list[int]
+    confidence: float
+
+
+class OCRResponse(BaseModel):
+    """OCR payload."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    full_text: str = Field(alias="fullText")
+    words: list[OCRWord]
+
+
 class AnalyzeResponse(BaseModel):
     """Top-level response payload for /analyze."""
 
@@ -52,3 +69,4 @@ class AnalyzeResponse(BaseModel):
     meta: MetaResponse
     technical_validation: TechnicalValidationResponse = Field(alias="technicalValidation")
     visual_analysis: VisualAnalysisResponse = Field(alias="visualAnalysis")
+    ocr: OCRResponse | None = None

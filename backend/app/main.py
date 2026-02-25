@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware  # 👈 IMPORTANTE
 
-from app.models.response_model import AnalyzeResponse, VisualAnalysisResponse
+from app.models.response_model import AnalyzeResponse, OCRResponse, VisualAnalysisResponse
 from app.services.color_analysis_service import extract_dominant_colors
 from app.services.guideline_validator import (
     load_guidelines,
@@ -13,6 +13,7 @@ from app.services.guideline_validator import (
 )
 from app.services.image_loader import load_upload_bytes
 from app.services.metadata_service import extract_image_metadata
+from app.services.ocr_service import run_ocr
 
 APP_TITLE = "Sodimac Technical Validation API"
 APP_VERSION = "1.0.0"
@@ -40,6 +41,7 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
         file_size_kb=file_size_kb,
     )
     dominant_colors = extract_dominant_colors(file_bytes)
+    ocr_result = run_ocr(file_bytes)
     guidelines = load_guidelines(GUIDELINES_PATH)
     validation = validate_technical_requirements(metadata, guidelines)
 
@@ -47,4 +49,5 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
         meta=metadata,
         technical_validation=validation,
         visual_analysis=VisualAnalysisResponse(dominant_colors=dominant_colors),
+        ocr=OCRResponse(**ocr_result) if ocr_result else None,
     )
