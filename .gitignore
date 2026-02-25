@@ -1,11 +1,13 @@
 # Python
 .venv/
+backend/.venv/
 venv/
 __pycache__/
 *.pyc
 
 # Node
 node_modules/
+frontend/.next/
 
 # Mac
 .DS_Store
