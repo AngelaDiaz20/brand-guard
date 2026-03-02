@@ -29,9 +29,12 @@ type RawAnalyzeResponse = {
   technicalValidation?: AnalyzeResponse["technicalValidation"];
   colorAnalysis?: { dominantColors?: RawColor[] };
   visualAnalysis?: { dominantColors?: RawColor[] };
-  ocr?: {
-    fullText?: unknown;
+    ocr?: {
+    rawText?: unknown;
+    correctedText?: unknown;
     words?: RawOcrWord[];
+    confidence?: { avg?: unknown; min?: unknown };
+    score?: unknown;
   } | null;
 };
 
@@ -67,13 +70,39 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
       confidence: word.confidence
     }));
 
-  const normalizedOcr =
-    response.ocr && typeof response.ocr.fullText === "string"
-      ? {
-          fullText: response.ocr.fullText,
-          words: normalizedOcrWords
-        }
-      : null;
+    const rawText =
+    response.ocr && typeof response.ocr.rawText === "string" ? response.ocr.rawText : "";
+
+    const correctedText =
+      response.ocr && typeof response.ocr.correctedText === "string"
+        ? response.ocr.correctedText
+        : "";
+
+    const avg =
+      response.ocr && typeof response.ocr.confidence?.avg === "number"
+        ? response.ocr.confidence.avg
+        : 0;
+
+    const min =
+      response.ocr && typeof response.ocr.confidence?.min === "number"
+        ? response.ocr.confidence.min
+        : 0;
+
+    const score =
+      response.ocr && (typeof response.ocr.score === "number" || response.ocr.score === null)
+        ? (response.ocr.score as number | null)
+        : null;
+
+    const normalizedOcr =
+      response.ocr && (rawText.trim() || correctedText.trim())
+        ? {
+            rawText,
+            correctedText,
+            words: normalizedOcrWords,
+            confidence: { avg, min },
+            score
+          }
+        : null;
 
   return {
     meta: response.meta as AnalyzeResponse["meta"],

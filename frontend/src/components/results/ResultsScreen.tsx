@@ -15,19 +15,18 @@ export function ResultsScreen({ data }: ResultsScreenProps) {
   const validationItems = getValidationItems(data.technicalValidation);
   const passed = validationItems.filter((item) => item.ok).length;
   const score = calculateScore(data.technicalValidation);
-  const dominantColors = data.colorAnalysis?.dominantColors ?? [];
-  const ocrText = data.ocr?.fullText ?? "";
+  const dominantColors = data.colorAnalysis?.dominantColors ?? []; 
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="lg:col-span-2">
         <ScoreCard score={score} passedChecks={passed} totalChecks={validationItems.length} />
       </div>
-     
+
       <div className="lg:col-span-2">
         <MetadataPanel metadata={data.meta} />
       </div>
-    
+
       {dominantColors.length > 0 && (
         <div className="lg:col-span-2">
           <ColorPalette dominantColors={dominantColors} />
@@ -43,11 +42,13 @@ export function ResultsScreen({ data }: ResultsScreenProps) {
         </div>
       </section>
 
-      {ocrText.trim() && (
-        <div className="lg:col-span-2">
-          <OCRPanel text={ocrText} />
-        </div>
-      )}
+      <div className="lg:col-span-2">
+        {/* Verificación de json en render
+        <pre className="lg:col-span-2 text-xs whitespace-pre-wrap">
+          {JSON.stringify(data.ocr, null, 2)}
+        </pre>*/}
+        <OCRPanel ocr={data.ocr ?? null} />
+      </div>
     </div>
   );
 }

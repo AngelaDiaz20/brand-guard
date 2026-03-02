@@ -1,25 +1,22 @@
-"""Service responsible for OCR extraction with PaddleOCR."""
-
 from __future__ import annotations
 
 from functools import lru_cache
 from io import BytesIO
-from typing import Any, Sequence
+from typing import Any, Sequence, Dict, List
 
 import numpy as np
+import cv2
 from PIL import Image, ImageOps
 
 
+# --------------------------------------------------
+# OCR ENGINE
+# --------------------------------------------------
+
 @lru_cache(maxsize=1)
 def _get_ocr_engine() -> Any:
-    """Build and cache a CPU-only PaddleOCR engine.
-
-    IMPORTANT:
-    - If you change lang/models, you MUST restart the backend because of lru_cache.
-    """
     from paddleocr import PaddleOCR
 
-    # For Spanish, PaddleOCR usually works best with lang="latin"
     return PaddleOCR(
         use_angle_cls=True,
         lang="latin",
@@ -29,8 +26,39 @@ def _get_ocr_engine() -> Any:
     )
 
 
-def _quad_to_xywh(points: Sequence[Sequence[float]]) -> list[int]:
-    """Convert PaddleOCR quadrilateral points into [x, y, w, h]."""
+# --------------------------------------------------
+# IMAGE PREPROCESSING
+# --------------------------------------------------
+
+def _normalize_image(pil_image: Image.Image) -> np.ndarray:
+    pil_image = ImageOps.exif_transpose(pil_image)
+    pil_image = pil_image.convert("RGB")
+    return np.asarray(pil_image, dtype=np.uint8)
+
+
+def _enhance_for_ocr(image_array: np.ndarray) -> np.ndarray:
+    gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+
+    thresh = cv2.adaptiveThreshold(
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        11,
+        2,
+    )
+
+    return cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
+
+
+# --------------------------------------------------
+# UTILS
+# --------------------------------------------------
+
+def _quad_to_xywh(points: Sequence[Sequence[float]]) -> List[int]:
     xs = [float(p[0]) for p in points]
     ys = [float(p[1]) for p in points]
 
@@ -42,85 +70,129 @@ def _quad_to_xywh(points: Sequence[Sequence[float]]) -> list[int]:
     return [min_x, min_y, max(0, max_x - min_x), max(0, max_y - min_y)]
 
 
-def _normalize_image_for_ocr(pil_image: Image.Image) -> np.ndarray:
-    """Prepare image for OCR (robust orientation + RGB)."""
-    # Fix EXIF orientation (common on photos from phones)
-    pil_image = ImageOps.exif_transpose(pil_image)
-    pil_image = pil_image.convert("RGB")
-    return np.asarray(pil_image, dtype=np.uint8)
+def _compute_confidence(words: List[Dict[str, Any]]) -> Dict[str, float]:
+    if not words:
+        return {"avg": 0.0, "min": 0.0}
+
+    confidences = [w["confidence"] for w in words]
+    return {
+        "avg": float(sum(confidences) / len(confidences)),
+        "min": float(min(confidences)),
+    }
 
 
 def _soft_fix_common_ocr_confusions(text: str) -> str:
-    out_tokens: list[str] = []
-    for tok in text.split():
-        has_alpha = any(ch.isalpha() for ch in tok)
-        has_zero = "0" in tok
-        if has_alpha and has_zero:
-            tok = tok.replace("0", "O")
-        out_tokens.append(tok)
-    return " ".join(out_tokens)
+    # Solo heurística ligera (NO ML todavía)
+    replacements = {
+        "promocion": "promoción",
+        "valido": "válido",
+        "mas": "más",
+    }
+
+    tokens = text.split()
+    corrected = []
+
+    for tok in tokens:
+        base = tok.lower()
+        if base in replacements:
+            corrected.append(replacements[base])
+        else:
+            corrected.append(tok)
+
+    return " ".join(corrected)
 
 
-def run_ocr(image_bytes: bytes) -> dict[str, Any]:
-    """Run OCR and return normalized text content."""
+# --------------------------------------------------
+# OCR CORE EXECUTION
+# --------------------------------------------------
+
+def _run_single_pass(image_array: np.ndarray) -> Dict[str, Any]:
+    raw_result = _get_ocr_engine().ocr(image_array, cls=True)
+
+    words: List[Dict[str, Any]] = []
+    lines_text: List[str] = []
+
+    lines = raw_result[0] if raw_result and isinstance(raw_result, list) else []
+
+    for line in lines:
+        if not isinstance(line, (list, tuple)) or len(line) < 2:
+            continue
+
+        box_points, text_info = line[0], line[1]
+
+        if not text_info or len(text_info) < 2:
+            continue
+
+        text = str(text_info[0]).strip()
+        confidence = float(text_info[1])
+
+        if not text:
+            continue
+
+        words.append(
+            {
+                "text": text,
+                "box": _quad_to_xywh(box_points),
+                "confidence": confidence,
+            }
+        )
+
+        lines_text.append(text)
+
+    full_text = "\n".join(lines_text).strip()
+
+    return {
+        "fullText": full_text,
+        "words": words,
+    }
+
+
+# --------------------------------------------------
+# MAIN PUBLIC FUNCTION
+# --------------------------------------------------
+
+def run_ocr(image_bytes: bytes) -> Dict[str, Any]:
+    """
+    Returns:
+    - rawText (exact OCR output)
+    - correctedText (post-processed version)
+    - words
+    - confidence metrics
+    """
+
     try:
         with Image.open(BytesIO(image_bytes)) as image:
-            image_array = _normalize_image_for_ocr(image)
+            base_image = _normalize_image(image)
 
-        raw_result = _get_ocr_engine().ocr(image_array, cls=True)
+        # First pass
+        result = _run_single_pass(base_image)
+        confidence_metrics = _compute_confidence(result["words"])
 
-        words: list[dict[str, Any]] = []
-        lines_text: list[str] = []
+        # If confidence low, enhance and retry
+        if confidence_metrics["avg"] < 0.85:
+            enhanced = _enhance_for_ocr(base_image)
+            enhanced_result = _run_single_pass(enhanced)
 
-        # PaddleOCR output is typically: [ [ [box, (text, conf)], ... ] ]
-        lines = raw_result[0] if raw_result and isinstance(raw_result, list) else []
+            enhanced_conf = _compute_confidence(enhanced_result["words"])
 
-        for line in lines:
-            if not isinstance(line, (list, tuple)) or len(line) < 2:
-                continue
+            if enhanced_conf["avg"] > confidence_metrics["avg"]:
+                result = enhanced_result
+                confidence_metrics = enhanced_conf
 
-            box_points, text_info = line[0], line[1]
-            if (
-                not isinstance(box_points, (list, tuple))
-                or len(box_points) != 4
-                or not isinstance(text_info, (list, tuple))
-                or len(text_info) < 2
-            ):
-                continue
+        raw_text = result["fullText"]
 
-            normalized_points: list[list[float]] = []
-            for point in box_points:
-                if not isinstance(point, (list, tuple)) or len(point) < 2:
-                    normalized_points = []
-                    break
-                normalized_points.append([float(point[0]), float(point[1])])
+        # VERSION 1 → RAW
+        raw_version = raw_text
 
-            if not normalized_points:
-                continue
-
-            text = str(text_info[0]).strip()
-            confidence = float(text_info[1])
-
-            if not text:
-                continue
-
-            words.append(
-                {
-                    "text": text,
-                    "box": _quad_to_xywh(normalized_points),
-                    "confidence": confidence,
-                }
-            )
-
-            # Keep a per-line list (better than concatenating word by word)
-            lines_text.append(text)
-
-        full_text = "\n".join(lines_text).strip()
-        full_text = _soft_fix_common_ocr_confusions(full_text)
+        # VERSION 2 → CORRECTED (heuristic for now, ML-ready)
+        corrected_version = _soft_fix_common_ocr_confusions(raw_text)
 
         return {
-            "fullText": full_text,
-            "words": words,
+            "rawText": raw_version,
+            "correctedText": corrected_version,
+            "words": result["words"],
+            "confidence": confidence_metrics,
         }
+
     except Exception:
         return {}

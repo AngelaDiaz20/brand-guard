@@ -20,8 +20,8 @@ export interface ColorItem {
   percentage: number;
 }
 
-export interface ColorAnalysis {
-  dominantColors: ColorItem[];
+export interface ColorAnalysis { 
+  dominantColors: ColorItem[]; 
 }
 
 export interface OCRWord {
@@ -30,9 +30,17 @@ export interface OCRWord {
   confidence: number;
 }
 
+export interface OCRConfidence {
+  avg: number;
+  min: number;
+}
+
 export interface OCRResponse {
-  fullText: string;
+  rawText: string;
+  correctedText: string;
   words: OCRWord[];
+  confidence: OCRConfidence;
+  score: number | null;
 }
 
 export interface AnalyzeResponse {

@@ -52,13 +52,26 @@ class OCRWord(BaseModel):
     confidence: float
 
 
+class OCRConfidence(BaseModel):
+    """Confidence metrics for OCR."""
+
+    avg: float
+    min: float
+
+
 class OCRResponse(BaseModel):
-    """OCR payload."""
+    """OCR payload with raw + corrected versions."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    full_text: str = Field(alias="fullText")
+    raw_text: str = Field(alias="rawText")
+    corrected_text: str = Field(alias="correctedText")
     words: list[OCRWord]
+    confidence: OCRConfidence
+
+    # 🔥 Preparado para futuro score ML
+    score: float | None = None
+
 
 
 class AnalyzeResponse(BaseModel):
