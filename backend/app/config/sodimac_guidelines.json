@@ -5,8 +5,12 @@
     "min_height_px": 1080,
     "allowed_formats": [
       "JPEG",
-      "PNG"
+      "PNG",
+      "PDF"
     ],
-    "max_file_size_mb": 5
+    "max_file_size_mb": 5,
+    "min_pages": 1,
+    "max_pages": 12,
+    "required_text": "Sodimac"
   }
 }

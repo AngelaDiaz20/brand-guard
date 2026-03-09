@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MetaResponse(BaseModel):
-    """Metadata extracted from an uploaded image."""
+    """Metadata extracted from an uploaded asset."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -16,6 +16,7 @@ class MetaResponse(BaseModel):
     file_size_kb: float = Field(alias="fileSizeKb")
     color_mode: str = Field(alias="colorMode")
     icc_profile: str | None = Field(alias="iccProfile")
+    page_count: int | None = Field(default=None, alias="pageCount")
 
 
 class TechnicalValidationResponse(BaseModel):

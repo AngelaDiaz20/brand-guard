@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 
 import { SectionCard } from "@/components/ui/SectionCard";
+import { getUploadFileType, UPLOAD_ACCEPT } from "@/types/upload";
 
 interface UploadAreaProps {
   selectedFile: File | null;
@@ -27,7 +28,7 @@ export function UploadArea({
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && getUploadFileType(file)) {
       onFileSelected(file);
     }
   };
@@ -37,7 +38,7 @@ export function UploadArea({
     setIsDragging(false);
 
     const file = event.dataTransfer.files?.[0];
-    if (!file || !file.type.startsWith("image/")) {
+    if (!file || !getUploadFileType(file)) {
       return;
     }
 
@@ -63,8 +64,8 @@ export function UploadArea({
             : "border-slate-300 bg-slate-50 hover:border-slate-400"
         }`}
       >
-        <p className="text-sm font-medium text-slate-700">Drag & Drop de imagen</p>
-        <p className="mt-1 text-xs text-slate-500">PNG, JPG, WEBP, TIFF, etc.</p>
+        <p className="text-sm font-medium text-slate-700">Drag & Drop de archivo</p>
+        <p className="mt-1 text-xs text-slate-500">JPG, JPEG, PNG o PDF.</p>
 
         <button
           type="button"
@@ -78,7 +79,7 @@ export function UploadArea({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={UPLOAD_ACCEPT}
           className="hidden"
           onChange={handleInputChange}
         />
@@ -97,7 +98,7 @@ export function UploadArea({
         onClick={onAnalyze}
         className="mt-5 w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Analizar imagen
+        Analizar archivo
       </button>
     </SectionCard>
   );

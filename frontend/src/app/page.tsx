@@ -7,9 +7,12 @@ import { ResultsScreen } from "@/components/results/ResultsScreen";
 import { UploadArea } from "@/components/upload/UploadArea";
 import { analyzeImage } from "@/lib/api";
 import type { AnalyzeResponse } from "@/types/analysis";
+import type { UploadFileType } from "@/types/upload";
+import { getUploadFileType } from "@/types/upload";
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFileType, setSelectedFileType] = useState<UploadFileType | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,8 +26,9 @@ export default function HomePage() {
     };
   }, [previewUrl]);
 
-  const applySelectedFile = (file: File) => {
+  const applySelectedFile = (file: File, fileType: UploadFileType) => {
     setSelectedFile(file);
+    setSelectedFileType(fileType);
     setResult(null);
     setLoading(false);
     setErrorMessage(null);
@@ -37,10 +41,11 @@ export default function HomePage() {
   };
 
   const handleFileSelected = (file: File) => {
-    if (!file.type.startsWith("image/")) {
+    const fileType = getUploadFileType(file);
+    if (!fileType) {
       return;
     }
-    applySelectedFile(file);
+    applySelectedFile(file, fileType);
   };
 
   const handleAnalyze = async () => {
@@ -67,6 +72,7 @@ export default function HomePage() {
   const handleReset = () => {
     setResult(null);
     setSelectedFile(null);
+    setSelectedFileType(null);
     setLoading(false);
     setErrorMessage(null);
     setPreviewUrl((previousUrl) => {
@@ -81,7 +87,7 @@ export default function HomePage() {
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <header className="mb-8">
         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">SODIMAC</p>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Análisis de imagen</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Análisis de archivo</h1>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
@@ -93,7 +99,9 @@ export default function HomePage() {
             onAnalyze={handleAnalyze}
           />
 
-          {previewUrl && <ImagePreview imageUrl={previewUrl} />}
+          {previewUrl && selectedFileType && (
+            <ImagePreview fileUrl={previewUrl} fileType={selectedFileType} />
+          )}
 
           <button
             type="button"
