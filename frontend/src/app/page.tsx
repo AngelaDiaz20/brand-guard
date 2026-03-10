@@ -85,10 +85,10 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <header className="mb-8">
+      {/* <header className="mb-8">
         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">SODIMAC</p>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Análisis de archivo</h1>
-      </header>
+      </header> */}
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <div className="space-y-4">

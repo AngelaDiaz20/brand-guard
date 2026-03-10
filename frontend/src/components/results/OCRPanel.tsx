@@ -27,7 +27,7 @@ export function OCRPanel({ ocr }: OCRPanelProps) {
         )}
       </div>
 
-      {rawText?.trim() && (
+      {/*{rawText?.trim() && (
         <>
           <p className="mt-4 text-sm font-semibold text-slate-700">
             Texto extraído (RAW)
@@ -36,12 +36,12 @@ export function OCRPanel({ ocr }: OCRPanelProps) {
             {rawText}
           </pre>
         </>
-      )}
+      )} */}
 
       {correctedText?.trim() && correctedText !== rawText && (
         <>
           <p className="mt-4 text-sm font-semibold text-slate-700">
-            Texto corregido
+            
           </p>
           <pre className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
             {correctedText}
