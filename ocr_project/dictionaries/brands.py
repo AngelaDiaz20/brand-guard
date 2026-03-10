@@ -1,0 +1,5 @@
+BRANDS = [
+    "SODIMAC",
+    "MAESTRO",
+    "CONSTRUCTOR",
+]

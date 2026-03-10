@@ -1,0 +1,9 @@
+MARKETING_WORDS = [
+    "ANIVERSARIO",
+    "SEMANA",
+    "OFERTAS",
+    "DESCUENTOS",
+    "PROMOCIÓN",
+    "CELEBREMOS",
+    "JUNTOS",
+]
