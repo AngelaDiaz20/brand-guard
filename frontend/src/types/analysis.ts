@@ -43,11 +43,35 @@ export interface OCRResponse {
   score: number | null;
 }
 
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type PieceType = "1:1" | "ST";
+
+export interface LayoutValidation {
+  pieceType: PieceType | null;
+  safeAreaBoundingBox: BoundingBox | null;
+  logoDetected: boolean;
+  logoPosition: BoundingBox | null;
+  logoSizeValid: boolean;
+  logoInsideSafeArea: boolean;
+  logoPositionValid: boolean;
+  logoContainerDetected: boolean;
+  logoContainerPosition: BoundingBox | null;
+  logoContainerSizeValid: boolean;
+  layoutScore: number;
+}
+
 export interface AnalyzeResponse {
   meta: Metadata;
   technicalValidation: TechnicalValidation;
   colorAnalysis: ColorAnalysis;
   ocr: OCRResponse | null;
+  layoutValidation: LayoutValidation | null;
 }
 
 export interface ValidationItem {

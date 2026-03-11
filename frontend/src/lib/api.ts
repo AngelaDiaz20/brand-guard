@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, OCRWord } from "@/types/analysis";
+import type { AnalyzeResponse, OCRWord, LayoutValidation, PieceType } from "@/types/analysis";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze`;
@@ -29,7 +29,8 @@ type RawAnalyzeResponse = {
   technicalValidation?: AnalyzeResponse["technicalValidation"];
   colorAnalysis?: { dominantColors?: RawColor[] };
   visualAnalysis?: { dominantColors?: RawColor[] };
-    ocr?: {
+  layoutValidation?: unknown;
+  ocr?: {
     rawText?: unknown;
     correctedText?: unknown;
     words?: RawOcrWord[];
@@ -37,6 +38,29 @@ type RawAnalyzeResponse = {
     score?: unknown;
   } | null;
 };
+
+type RawBoundingBox = {
+  x?: unknown;
+  y?: unknown;
+  width?: unknown;
+  height?: unknown;
+};
+
+function isBoundingBox(value: unknown): value is { x: number; y: number; width: number; height: number } {
+  const box = value as RawBoundingBox;
+  return (
+    !!box &&
+    typeof box === "object" &&
+    typeof box.x === "number" &&
+    Number.isFinite(box.x) &&
+    typeof box.y === "number" &&
+    Number.isFinite(box.y) &&
+    typeof box.width === "number" &&
+    Number.isFinite(box.width) &&
+    typeof box.height === "number" &&
+    Number.isFinite(box.height)
+  );
+}
 
 function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
   const response = (payload ?? {}) as RawAnalyzeResponse;
@@ -104,13 +128,53 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
           }
         : null;
 
+  const rawLayout = response.layoutValidation as
+    | {
+        pieceType?: unknown;
+        safeAreaBoundingBox?: unknown;
+        logoDetected?: unknown;
+        logoPosition?: unknown;
+        logoSizeValid?: unknown;
+        logoInsideSafeArea?: unknown;
+        logoPositionValid?: unknown;
+        logoContainerDetected?: unknown;
+        logoContainerPosition?: unknown;
+        logoContainerSizeValid?: unknown;
+        layoutScore?: unknown;
+      }
+    | undefined;
+
+  const normalizedLayout: LayoutValidation | null =
+    rawLayout && typeof rawLayout === "object"
+      ? {
+          pieceType:
+            rawLayout.pieceType === "1:1" || rawLayout.pieceType === "ST"
+              ? (rawLayout.pieceType as PieceType)
+              : null,
+          safeAreaBoundingBox: isBoundingBox(rawLayout.safeAreaBoundingBox) ? rawLayout.safeAreaBoundingBox : null,
+          logoDetected: rawLayout.logoDetected === true,
+          logoPosition: isBoundingBox(rawLayout.logoPosition) ? rawLayout.logoPosition : null,
+          logoSizeValid: rawLayout.logoSizeValid === true,
+          logoInsideSafeArea: rawLayout.logoInsideSafeArea === true,
+          logoPositionValid: rawLayout.logoPositionValid === true,
+          logoContainerDetected: rawLayout.logoContainerDetected === true,
+          logoContainerPosition: isBoundingBox(rawLayout.logoContainerPosition) ? rawLayout.logoContainerPosition : null,
+          logoContainerSizeValid: rawLayout.logoContainerSizeValid === true,
+          layoutScore:
+            typeof rawLayout.layoutScore === "number" && Number.isFinite(rawLayout.layoutScore)
+              ? rawLayout.layoutScore
+              : 0
+        }
+      : null;
+
   return {
     meta: response.meta as AnalyzeResponse["meta"],
     technicalValidation: response.technicalValidation as AnalyzeResponse["technicalValidation"],
     colorAnalysis: {
       dominantColors: colors
     },
-    ocr: normalizedOcr
+    ocr: normalizedOcr,
+    layoutValidation: normalizedLayout
   };
 }
 

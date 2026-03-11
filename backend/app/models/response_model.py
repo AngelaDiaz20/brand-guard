@@ -74,6 +74,36 @@ class OCRResponse(BaseModel):
     score: float | None = None
 
 
+class LayoutBoundingBox(BaseModel):
+    """Axis-aligned bounding box in pixels."""
+
+    x: float
+    y: float
+    width: float
+    height: float
+
+
+class LayoutValidationResponse(BaseModel):
+    """Layout compliance validation payload."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    piece_type: str | None = Field(alias="pieceType")
+    safe_area_bounding_box: LayoutBoundingBox | None = Field(alias="safeAreaBoundingBox")
+
+    logo_detected: bool = Field(alias="logoDetected")
+    logo_position: LayoutBoundingBox | None = Field(alias="logoPosition")
+    logo_size_valid: bool = Field(alias="logoSizeValid")
+    logo_inside_safe_area: bool = Field(alias="logoInsideSafeArea")
+    logo_position_valid: bool = Field(alias="logoPositionValid")
+
+    logo_container_detected: bool = Field(alias="logoContainerDetected")
+    logo_container_position: LayoutBoundingBox | None = Field(alias="logoContainerPosition")
+    logo_container_size_valid: bool = Field(alias="logoContainerSizeValid")
+
+    layout_score: int = Field(alias="layoutScore")
+
+
 
 class AnalyzeResponse(BaseModel):
     """Top-level response payload for /analyze."""
@@ -84,3 +114,4 @@ class AnalyzeResponse(BaseModel):
     technical_validation: TechnicalValidationResponse = Field(alias="technicalValidation")
     visual_analysis: VisualAnalysisResponse = Field(alias="visualAnalysis")
     ocr: OCRResponse | None = None
+    layout_validation: LayoutValidationResponse | None = Field(default=None, alias="layoutValidation")

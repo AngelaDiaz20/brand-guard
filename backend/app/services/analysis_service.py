@@ -4,10 +4,11 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
-from app.models.response_model import AnalyzeResponse, OCRResponse, VisualAnalysisResponse
+from app.models.response_model import AnalyzeResponse, LayoutValidationResponse, OCRResponse, VisualAnalysisResponse
 from app.services.color_analysis_service import extract_dominant_colors
 from app.services.guideline_validator import load_guidelines, validate_technical_requirements
 from app.services.image_loader import load_upload_bytes
+from app.services.layout_validation_service import validate_layout
 from app.services.metadata_service import extract_image_metadata
 from app.services.ocr_service import run_ocr
 from app.services.pdf_analyzer import analyze_pdf_metadata
@@ -26,6 +27,7 @@ async def analyze_upload(file: UploadFile, guidelines_path: Path) -> AnalyzeResp
         )
         ocr_result = run_ocr(file_bytes)
         validation = validate_technical_requirements(metadata, guidelines)
+        layout_validation = validate_layout(file_bytes)
         return AnalyzeResponse(
             meta=metadata,
             technical_validation=validation,
@@ -33,6 +35,7 @@ async def analyze_upload(file: UploadFile, guidelines_path: Path) -> AnalyzeResp
                 dominant_colors=extract_dominant_colors(file_bytes),
             ),
             ocr=OCRResponse(**ocr_result) if ocr_result else None,
+            layout_validation=LayoutValidationResponse(**layout_validation),
         )
 
     pdf_result = analyze_pdf_metadata(

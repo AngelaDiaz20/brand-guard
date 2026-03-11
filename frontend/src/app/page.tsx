@@ -100,7 +100,7 @@ export default function HomePage() {
           />
 
           {previewUrl && selectedFileType && (
-            <ImagePreview fileUrl={previewUrl} fileType={selectedFileType} />
+            <ImagePreview fileUrl={previewUrl} fileType={selectedFileType} result={result} />
           )}
 
           <button

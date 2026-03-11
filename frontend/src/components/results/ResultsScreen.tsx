@@ -6,6 +6,7 @@ import { ColorPalette } from "@/components/results/ColorPalette";
 import { MetadataPanel } from "@/components/results/MetadataPanel";
 import { ScoreCard } from "@/components/results/ScoreCard";
 import { ValidationCard } from "@/components/results/ValidationCard";
+import { LayoutValidationPanel } from "@/components/results/LayoutValidationPanel";
 
 interface ResultsScreenProps {
   data: AnalyzeResponse;
@@ -48,6 +49,10 @@ export function ResultsScreen({ data }: ResultsScreenProps) {
           {JSON.stringify(data.ocr, null, 2)}
         </pre>*/}
         <OCRPanel ocr={data.ocr ?? null} />
+      </div>
+
+      <div className="lg:col-span-2">
+        <LayoutValidationPanel layout={data.layoutValidation ?? null} />
       </div>
     </div>
   );
