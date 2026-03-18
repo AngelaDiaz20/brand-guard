@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-import { computeSafeAreaBoundingBox, detectPieceType } from "@/config/layoutRules";
+import { layoutRules as staticLayoutRules } from "@/config/layoutRules";
+import { computeSafeAreaBoundingBox, detectPieceType } from "@/config/safeAreaRules";
 import type { AnalyzeResponse } from "@/types/analysis";
 import type { UploadFileType } from "@/types/upload";
 
@@ -18,11 +19,15 @@ function drawBox(
   ctx: CanvasRenderingContext2D,
   box: DrawBox,
   color: string,
-  label?: string
+  label?: string,
+  options?: { dashed?: boolean }
 ) {
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
+  if (options?.dashed) {
+    ctx.setLineDash([6, 4]);
+  }
   ctx.strokeRect(box.x, box.y, box.width, box.height);
   if (label) {
     ctx.fillStyle = color;
@@ -104,9 +109,51 @@ export function ImagePreview({ fileUrl, fileType, result }: ImagePreviewProps) {
         );
       }
 
-      if (layout.logoDetected && layout.logoPosition) {
+      const pieceType = layout.pieceType ?? detectPieceType(meta.width, meta.height);
+      const staticKey = pieceType === "ST" ? "9:16" : pieceType === "1:1" ? "1:1" : null;
+
+      if (staticKey) {
+        const expected = staticLayoutRules[staticKey].logo.expected;
+        const masterWidth = 1080;
+        const masterHeight = staticKey === "9:16" ? 1920 : 1080;
+
+        // IMPORTANT: expected.x/expected.y are treated as CENTER coordinates in the master canvas.
+        const expectedMasterX = expected.x - expected.width / 2;
+        const expectedMasterY = expected.y - expected.height / 2;
+
+        // Master -> image -> display mapping (deterministic; no dependency on detection).
+        const masterToImageX = meta.width / masterWidth;
+        const masterToImageY = meta.height / masterHeight;
+        const expectedImage = {
+          x: expectedMasterX * masterToImageX,
+          y: expectedMasterY * masterToImageY,
+          width: expected.width * masterToImageX,
+          height: expected.height * masterToImageY
+        };
+
+        drawBox(
+          ctx,
+          {
+            x: expectedImage.x * sx,
+            y: expectedImage.y * sy,
+            width: expectedImage.width * sx,
+            height: expectedImage.height * sy
+          },
+          "rgba(234, 179, 8, 0.95)",
+          "Logo esperado",
+          { dashed: true }
+        );
+      }
+
+      const logoDetectionStatus =
+        layout.logoValidation?.logoDetection.status ?? (layout.logoDetected ? "ok" : "warning");
+      const logoDetectionFlag = layout.logoDetectionResult?.detected ?? layout.logoDetected;
+      const detectedLogoBox =
+        layout.logoDetectionResult?.bbox ?? layout.logoBoundingBox ?? layout.logoPosition ?? null;
+
+      if (logoDetectionStatus === "ok" && logoDetectionFlag && detectedLogoBox) {
         const ok = layout.logoInsideSafeArea && layout.logoSizeValid && layout.logoPositionValid;
-        const box = layout.logoBoundingBox ?? layout.logoPosition;
+        const box = detectedLogoBox;
         drawBox(
           ctx,
           {

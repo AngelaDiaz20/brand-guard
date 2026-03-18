@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, OCRWord, LayoutValidation, PieceType } from "@/types/analysis";
+import type { AnalyzeResponse, OCRWord, LayoutValidation, PieceType, LogoDetectionResult, LogoValidationDetails } from "@/types/analysis";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze`;
@@ -134,10 +134,14 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
         safeAreaBoundingBox?: unknown;
         logoDetected?: unknown;
         logoWarning?: unknown;
+        logoDetectionResult?: unknown;
+        logoValidation?: unknown;
         logoBoundingBox?: unknown;
         logoPosition?: unknown;
         logoSizeValid?: unknown;
         logoInsideSafeArea?: unknown;
+        containerInsideSafeArea?: unknown;
+        overlapPercentage?: unknown;
         logoPositionValid?: unknown;
         logoContainerDetected?: unknown;
         logoContainerBoundingBox?: unknown;
@@ -158,6 +162,59 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
           safeAreaBoundingBox: isBoundingBox(rawLayout.safeAreaBoundingBox) ? rawLayout.safeAreaBoundingBox : null,
           logoDetected: rawLayout.logoDetected === true,
           logoWarning: rawLayout.logoWarning === true,
+          logoDetectionResult:
+            rawLayout.logoDetectionResult && typeof rawLayout.logoDetectionResult === "object"
+              ? (() => {
+                  const result = rawLayout.logoDetectionResult as {
+                    detected?: unknown;
+                    bbox?: unknown;
+                    confidence?: unknown;
+                  };
+                  const detected = result.detected === true;
+                  const bbox = isBoundingBox(result.bbox) ? result.bbox : undefined;
+                  const confidence =
+                    typeof result.confidence === "number" && Number.isFinite(result.confidence)
+                      ? result.confidence
+                      : undefined;
+                  const normalized: LogoDetectionResult = { detected };
+                  if (bbox) normalized.bbox = bbox;
+                  if (confidence !== undefined) normalized.confidence = confidence;
+                  return normalized;
+                })()
+              : undefined,
+          logoValidation:
+            rawLayout.logoValidation && typeof rawLayout.logoValidation === "object"
+              ? (() => {
+                  const lv = rawLayout.logoValidation as {
+                    logoDetection?: unknown;
+                    logoPosition?: unknown;
+                    logoSize?: unknown;
+                  };
+                  const det = lv.logoDetection as { status?: unknown; message?: unknown; affectsScore?: unknown } | undefined;
+                  const pos = lv.logoPosition as { status?: unknown } | undefined;
+                  const size = lv.logoSize as { status?: unknown } | undefined;
+
+                  const detectionStatus = det?.status === "ok" || det?.status === "warning" ? det.status : "warning";
+                  const detectionMessage = typeof det?.message === "string" ? det.message : "Logo no detectado";
+                  const affectsScore = det?.affectsScore === true;
+
+                  const posStatus =
+                    pos?.status === "ok" || pos?.status === "error" || pos?.status === "not_applicable"
+                      ? pos.status
+                      : "not_applicable";
+                  const sizeStatus =
+                    size?.status === "ok" || size?.status === "error" || size?.status === "not_applicable"
+                      ? size.status
+                      : "not_applicable";
+
+                  const normalized: LogoValidationDetails = {
+                    logoDetection: { status: detectionStatus, message: detectionMessage, affectsScore },
+                    logoPosition: { status: posStatus },
+                    logoSize: { status: sizeStatus }
+                  };
+                  return normalized;
+                })()
+              : undefined,
           logoBoundingBox: isBoundingBox(rawLayout.logoBoundingBox)
             ? rawLayout.logoBoundingBox
             : isBoundingBox(rawLayout.logoPosition)
@@ -170,6 +227,11 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
               : null,
           logoSizeValid: rawLayout.logoSizeValid === true,
           logoInsideSafeArea: rawLayout.logoInsideSafeArea === true,
+          containerInsideSafeArea: rawLayout.containerInsideSafeArea === true,
+          overlapPercentage:
+            typeof rawLayout.overlapPercentage === "number" && Number.isFinite(rawLayout.overlapPercentage)
+              ? rawLayout.overlapPercentage
+              : 0,
           logoPositionValid: rawLayout.logoPositionValid === true,
           logoContainerDetected: rawLayout.logoContainerDetected === true,
           logoContainerBoundingBox: isBoundingBox(rawLayout.logoContainerBoundingBox)

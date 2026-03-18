@@ -30,7 +30,7 @@ export function ScoreCard({ score, passedChecks, totalChecks }: ScoreCardProps) 
 
   return (
     <SectionCard className="bg-white">
-      <p className="text-sm font-medium text-slate-500">Score general</p>
+      <p className="text-sm font-medium text-slate-500">Puntaje general</p>
 
       <div className="mt-4 flex items-center gap-6">
         {/* CÍRCULO */}

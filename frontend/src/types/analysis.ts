@@ -52,15 +52,42 @@ export interface BoundingBox {
 
 export type PieceType = "1:1" | "ST";
 
+export interface LogoDetectionResult {
+  detected: boolean;
+  bbox?: BoundingBox;
+  confidence?: number;
+}
+
+export type LogoDetectionStatus = "ok" | "warning";
+export type LogoCheckStatus = "ok" | "error" | "not_applicable";
+
+export interface LogoValidationDetails {
+  logoDetection: {
+    status: LogoDetectionStatus;
+    message: string;
+    affectsScore: boolean;
+  };
+  logoPosition: {
+    status: LogoCheckStatus;
+  };
+  logoSize: {
+    status: LogoCheckStatus;
+  };
+}
+
 export interface LayoutValidation {
   pieceType: PieceType | null;
   safeAreaBoundingBox: BoundingBox | null;
   logoDetected: boolean;
   logoWarning: boolean;
+  logoDetectionResult?: LogoDetectionResult;
+  logoValidation?: LogoValidationDetails;
   logoBoundingBox: BoundingBox | null;
   logoPosition: BoundingBox | null;
   logoSizeValid: boolean;
   logoInsideSafeArea: boolean;
+  containerInsideSafeArea: boolean;
+  overlapPercentage: number;
   logoPositionValid: boolean;
   logoContainerDetected: boolean;
   logoContainerBoundingBox: BoundingBox | null;

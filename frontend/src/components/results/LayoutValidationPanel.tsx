@@ -76,7 +76,13 @@ export function LayoutValidationPanel({ layout }: { layout: LayoutValidation | n
   const pieceLabel =
     layout.pieceType === "1:1" ? "1:1 (Cuadrado)" : layout.pieceType === "ST" ? "ST (Story)" : "No reconocido";
 
-  const hasLogo = layout.logoDetected;
+  const logoDetectionStatus =
+    layout.logoValidation?.logoDetection.status ?? (layout.logoDetected ? "ok" : "warning");
+  const logoMessage =
+    layout.logoValidation?.logoDetection.message ??
+    (layout.logoDetected ? "Logo detectado." : "No se detectó logo en la pieza.");
+
+  const hasLogo = logoDetectionStatus === "ok";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -95,25 +101,37 @@ export function LayoutValidationPanel({ layout }: { layout: LayoutValidation | n
         <Row
           title="Logo detectado"
           description={
-            layout.logoDetected
+            hasLogo
               ? "Se detectó el ícono de casa mediante template matching."
-              : "Advertencia: logo no encontrado (no afecta el puntaje)."
+              : `${logoMessage} La ausencia del logo no invalida automáticamente este activo.`
           }
-          status={layout.logoDetected ? "ok" : "warning"}
+          status={hasLogo ? "ok" : "warning"}
         />
         <Row
           title="Logo dentro del área segura"
-          description="El logo debe quedar completamente dentro del área segura."
+          description={
+            hasLogo
+              ? "El logo debe quedar dentro del área segura."
+              : "No evaluado, porque no hubo detección."
+          }
           status={!hasLogo ? "na" : layout.logoInsideSafeArea ? "ok" : "error"}
         />
         <Row
           title="Tamaño del logo correcto"
-          description="Tolerancia permitida: ±10% sobre el tamaño oficial."
+          description={
+            hasLogo
+              ? "Tolerancia permitida: ±10% sobre el tamaño oficial."
+              : "No evaluado, porque no hubo detección."
+          }
           status={!hasLogo ? "na" : layout.logoSizeValid ? "ok" : "error"}
         />
         <Row
           title="Posición del logo correcta"
-          description="Tolerancia permitida: ±40 px sobre la posición oficial."
+          description={
+            hasLogo
+              ? "Tolerancia permitida: ±40 px sobre la posición oficial."
+              : "No evaluado, porque no hubo detección."
+          }
           status={!hasLogo ? "na" : layout.logoPositionValid ? "ok" : "error"}
         />
         <Row
