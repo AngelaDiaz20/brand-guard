@@ -25,11 +25,15 @@ class SafeAreaRule(TypedDict):
 
 
 class LogoRule(TypedDict):
+    x: float
+    y: float
     width: float
     height: float
 
 
 class LogoContainerRule(TypedDict):
+    x: float
+    y: float
     width: float
     height: float
 
@@ -45,14 +49,13 @@ LAYOUT_RULES: dict[PieceType, LayoutRule] = {
     "1:1": {
         "canvas": {"width": 1080.0, "height": 1080.0},
         "safe_area": {"width": 1000.0, "height": 1000.0, "center_x": 540.0, "center_y": 540.0},
-        "logo": {"width": 71.1652, "height": 53.7317},
-        "logo_container": {"width": 102.2869, "height": 100.6546},
+        "logo": {"x": 989.0, "y": 90.0, "width": 71.0, "height": 54.0},
+        "logo_container": {"x": 946.0, "y": 291.0, "width": 102.0, "height": 101.0},
     },
     "ST": {
         "canvas": {"width": 1080.0, "height": 1920.0},
         "safe_area": {"width": 960.0, "height": 1360.0, "center_x": 540.0, "center_y": 831.0},
-        "logo": {"width": 71.1652, "height": 53.7317},
-        "logo_container": {"width": 102.2869, "height": 100.6546},
+        "logo": {"x": 946.0, "y": 291.0, "width": 71.0, "height": 54.0},
+        "logo_container": {"x": 989.0, "y": 90.0, "width": 102.0, "height": 101.0},
     },
 }
-

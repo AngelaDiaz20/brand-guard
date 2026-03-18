@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from io import BytesIO
+from pathlib import Path
 
 from PIL import Image, ImageDraw
 
@@ -13,6 +14,35 @@ def make_png_bytes(image: Image.Image) -> bytes:
     buf = BytesIO()
     image.save(buf, format="PNG")
     return buf.getvalue()
+
+def load_official_logo_template() -> Image.Image | None:
+    repo_root = Path(__file__).resolve().parents[2]
+    candidates = [
+        repo_root / "assets" / "brand" / "sodimac_logo.png",
+        repo_root / "backend" / "assets" / "brand" / "sodimac_logo.png",
+        repo_root / "backend" / "assets" / "brand" / "sodimac" / "logo.png",
+    ]
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        return None
+    return Image.open(path).convert("RGBA")
+
+
+def paste_template_logo(img: Image.Image, *, x: int, y: int, width: int, height: int) -> None:
+    template = load_official_logo_template()
+    if template is None:
+        raise RuntimeError("No se encontró el template oficial del logo para las pruebas.")
+
+    template = template.resize((width, height), Image.Resampling.LANCZOS)
+    rgb = template.convert("RGB")
+    alpha = template.split()[-1]
+
+    # If fully opaque, derive a mask from non-white pixels.
+    if alpha.getextrema() == (255, 255):
+        gray = template.convert("L")
+        alpha = gray.point(lambda p: 255 if p < 250 else 0)
+
+    img.paste(rgb, (x, y), alpha)
 
 
 class LayoutValidationServiceTests(unittest.TestCase):
@@ -26,39 +56,22 @@ class LayoutValidationServiceTests(unittest.TestCase):
         logo_w = int(round(rule["logo"]["width"]))
         logo_h = int(round(rule["logo"]["height"]))
 
-        # Draw a simple "house" icon (black) with a white mask.
-        mask = Image.new("L", (logo_w, logo_h), 0)
-        mdraw = ImageDraw.Draw(mask)
-        mdraw.polygon(
-            [
-                (logo_w * 0.15, logo_h * 0.55),
-                (logo_w * 0.5, logo_h * 0.08),
-                (logo_w * 0.85, logo_h * 0.55),
-            ],
-            fill=255,
-        )
-        mdraw.rectangle([logo_w * 0.25, logo_h * 0.55, logo_w * 0.75, logo_h * 0.92], fill=255)
-        door_w = logo_w * 0.18
-        door_h = logo_h * 0.32
-        door_x0 = logo_w * 0.5 - door_w / 2
-        door_y0 = logo_h * 0.92 - door_h
-        mdraw.rectangle([door_x0, door_y0, door_x0 + door_w, logo_h * 0.92], fill=0)
-        house = Image.new("RGB", (logo_w, logo_h), (0, 0, 0))
-
         # Place near top-right but within safe area.
         logo_x = 950
         logo_y = 60
-        img.paste(house, (logo_x, logo_y), mask)
+        paste_template_logo(img, x=logo_x, y=logo_y, width=logo_w, height=logo_h)
 
         payload = validate_layout(make_png_bytes(img))
 
         self.assertEqual(payload["pieceType"], "1:1")
         self.assertTrue(payload["logoDetected"])
+        self.assertFalse(payload["logoWarning"])
         self.assertTrue(payload["logoInsideSafeArea"])
         self.assertTrue(payload["logoSizeValid"])
         self.assertTrue(payload["logoPositionValid"])
         self.assertFalse(payload["logoContainerDetected"])
         self.assertEqual(payload["layoutScore"], 100)
+        self.assertTrue(payload["textInsideSafeArea"])
 
     def test_detects_container_when_present_and_validates_size(self) -> None:
         rule = LAYOUT_RULES["1:1"]
@@ -86,31 +99,26 @@ class LayoutValidationServiceTests(unittest.TestCase):
             fill=(225, 225, 225),
         )
 
-        # House icon on top
-        mask = Image.new("L", (logo_w, logo_h), 0)
-        mdraw = ImageDraw.Draw(mask)
-        mdraw.polygon(
-            [
-                (logo_w * 0.15, logo_h * 0.55),
-                (logo_w * 0.5, logo_h * 0.08),
-                (logo_w * 0.85, logo_h * 0.55),
-            ],
-            fill=255,
-        )
-        mdraw.rectangle([logo_w * 0.25, logo_h * 0.55, logo_w * 0.75, logo_h * 0.92], fill=255)
-        door_w = logo_w * 0.18
-        door_h = logo_h * 0.32
-        door_x0 = logo_w * 0.5 - door_w / 2
-        door_y0 = logo_h * 0.92 - door_h
-        mdraw.rectangle([door_x0, door_y0, door_x0 + door_w, logo_h * 0.92], fill=0)
-        house = Image.new("RGB", (logo_w, logo_h), (0, 0, 0))
-        img.paste(house, (logo_x, logo_y), mask)
+        paste_template_logo(img, x=logo_x, y=logo_y, width=logo_w, height=logo_h)
 
         payload = validate_layout(make_png_bytes(img))
 
         self.assertTrue(payload["logoDetected"])
         self.assertTrue(payload["logoContainerDetected"])
         self.assertTrue(payload["logoContainerSizeValid"])
+        self.assertEqual(payload["layoutScore"], 100)
+
+    def test_logo_absence_triggers_warning_but_does_not_force_score_to_zero(self) -> None:
+        rule = LAYOUT_RULES["1:1"]
+        canvas_w = int(rule["canvas"]["width"])
+        canvas_h = int(rule["canvas"]["height"])
+
+        img = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
+        payload = validate_layout(make_png_bytes(img), ocr_words=[])
+
+        self.assertEqual(payload["pieceType"], "1:1")
+        self.assertFalse(payload["logoDetected"])
+        self.assertTrue(payload["logoWarning"])
         self.assertEqual(payload["layoutScore"], 100)
 
 

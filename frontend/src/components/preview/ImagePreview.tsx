@@ -106,13 +106,14 @@ export function ImagePreview({ fileUrl, fileType, result }: ImagePreviewProps) {
 
       if (layout.logoDetected && layout.logoPosition) {
         const ok = layout.logoInsideSafeArea && layout.logoSizeValid && layout.logoPositionValid;
+        const box = layout.logoBoundingBox ?? layout.logoPosition;
         drawBox(
           ctx,
           {
-            x: layout.logoPosition.x * sx,
-            y: layout.logoPosition.y * sy,
-            width: layout.logoPosition.width * sx,
-            height: layout.logoPosition.height * sy
+            x: box.x * sx,
+            y: box.y * sy,
+            width: box.width * sx,
+            height: box.height * sy
           },
           ok ? "rgba(16, 185, 129, 0.95)" : "rgba(239, 68, 68, 0.95)",
           "Logo"
@@ -120,13 +121,14 @@ export function ImagePreview({ fileUrl, fileType, result }: ImagePreviewProps) {
       }
 
       if (layout.logoContainerDetected && layout.logoContainerPosition) {
+        const box = layout.logoContainerBoundingBox ?? layout.logoContainerPosition;
         drawBox(
           ctx,
           {
-            x: layout.logoContainerPosition.x * sx,
-            y: layout.logoContainerPosition.y * sy,
-            width: layout.logoContainerPosition.width * sx,
-            height: layout.logoContainerPosition.height * sy
+            x: box.x * sx,
+            y: box.y * sy,
+            width: box.width * sx,
+            height: box.height * sy
           },
           layout.logoContainerSizeValid
             ? "rgba(16, 185, 129, 0.8)"

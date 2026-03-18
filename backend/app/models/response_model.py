@@ -92,15 +92,19 @@ class LayoutValidationResponse(BaseModel):
     safe_area_bounding_box: LayoutBoundingBox | None = Field(alias="safeAreaBoundingBox")
 
     logo_detected: bool = Field(alias="logoDetected")
+    logo_warning: bool = Field(default=False, alias="logoWarning")
+    logo_bounding_box: LayoutBoundingBox | None = Field(default=None, alias="logoBoundingBox")
     logo_position: LayoutBoundingBox | None = Field(alias="logoPosition")
     logo_size_valid: bool = Field(alias="logoSizeValid")
     logo_inside_safe_area: bool = Field(alias="logoInsideSafeArea")
     logo_position_valid: bool = Field(alias="logoPositionValid")
 
     logo_container_detected: bool = Field(alias="logoContainerDetected")
+    logo_container_bounding_box: LayoutBoundingBox | None = Field(default=None, alias="logoContainerBoundingBox")
     logo_container_position: LayoutBoundingBox | None = Field(alias="logoContainerPosition")
     logo_container_size_valid: bool = Field(alias="logoContainerSizeValid")
 
+    text_inside_safe_area: bool = Field(default=True, alias="textInsideSafeArea")
     layout_score: int = Field(alias="layoutScore")
 
 

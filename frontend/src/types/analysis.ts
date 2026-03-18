@@ -56,13 +56,17 @@ export interface LayoutValidation {
   pieceType: PieceType | null;
   safeAreaBoundingBox: BoundingBox | null;
   logoDetected: boolean;
+  logoWarning: boolean;
+  logoBoundingBox: BoundingBox | null;
   logoPosition: BoundingBox | null;
   logoSizeValid: boolean;
   logoInsideSafeArea: boolean;
   logoPositionValid: boolean;
   logoContainerDetected: boolean;
+  logoContainerBoundingBox: BoundingBox | null;
   logoContainerPosition: BoundingBox | null;
   logoContainerSizeValid: boolean;
+  textInsideSafeArea: boolean;
   layoutScore: number;
 }
 

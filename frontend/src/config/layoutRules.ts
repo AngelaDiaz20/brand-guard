@@ -11,12 +11,16 @@ export const layoutRules = {
       centerY: 540
     },
     logo: {
-      width: 71.1652,
-      height: 53.7317
+      x: 989,
+      y: 90,
+      width: 71,
+      height: 54
     },
     logoContainer: {
-      width: 102.2869,
-      height: 100.6546
+      x: 946,
+      y: 291,
+      width: 102,
+      height: 101
     }
   },
   ST: {
@@ -31,12 +35,16 @@ export const layoutRules = {
       centerY: 831
     },
     logo: {
-      width: 71.1652,
-      height: 53.7317
+      x: 946,
+      y: 291,
+      width: 71,
+      height: 54
     },
     logoContainer: {
-      width: 102.2869,
-      height: 100.6546
+      x: 989,
+      y: 90,
+      width: 102,
+      height: 101
     }
   }
 } as const;
@@ -82,4 +90,3 @@ export function computeSafeAreaBoundingBox(
     height: safeHeight
   };
 }
-

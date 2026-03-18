@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from io import BytesIO
+from functools import lru_cache
+from pathlib import Path
 from typing import Iterable
 
 import numpy as np
@@ -107,13 +109,10 @@ def _sobel_magnitude(gray: np.ndarray) -> np.ndarray:
 
 
 def _generate_house_logo_template(width: int, height: int) -> Image.Image:
-    # Placeholder house icon template (to be replaced by the official logo template).
-    # This keeps the pipeline functional in environments where the true template isn't bundled yet.
+    # Fallback "house" icon template used only if the official template cannot be loaded.
     img = Image.new("L", (width, height), 0)
     draw = ImageDraw.Draw(img)
 
-    # Roof
-    roof_h = int(round(height * 0.45))
     base_y = int(round(height * 0.55))
     draw.polygon(
         [
@@ -123,14 +122,8 @@ def _generate_house_logo_template(width: int, height: int) -> Image.Image:
         ],
         fill=255,
     )
+    draw.rectangle([width * 0.25, base_y, width * 0.75, height * 0.92], fill=255)
 
-    # Body
-    draw.rectangle(
-        [width * 0.25, base_y, width * 0.75, height * 0.92],
-        fill=255,
-    )
-
-    # Door cutout (subtractive)
     door_w = width * 0.18
     door_h = height * 0.32
     door_x0 = width * 0.5 - door_w / 2.0
@@ -139,11 +132,49 @@ def _generate_house_logo_template(width: int, height: int) -> Image.Image:
     return img
 
 
+def _repo_root() -> Path:
+    # backend/app/services/layout_validation_service.py -> repo root
+    return Path(__file__).resolve().parents[3]
+
+
+@lru_cache(maxsize=1)
+def _load_official_logo_template() -> Image.Image | None:
+    candidates = [
+        _repo_root() / "assets" / "brand" / "sodimac_logo.png",
+        _repo_root() / "backend" / "assets" / "brand" / "sodimac_logo.png",
+        _repo_root() / "backend" / "assets" / "brand" / "sodimac" / "logo.png",
+    ]
+
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        return None
+
+    try:
+        with Image.open(path) as img:
+            img = ImageOps.exif_transpose(img).convert("RGBA")
+            alpha = img.split()[-1]
+            bbox = alpha.getbbox()
+            if bbox:
+                img = img.crop(bbox)
+
+            # Composite on white to avoid edge artifacts from transparency.
+            bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+            bg.alpha_composite(img)
+            return bg.convert("L")
+    except Exception:
+        return None
+
+
 def _get_logo_template_for_canvas(piece_type: PieceType) -> Image.Image:
     rule = LAYOUT_RULES[piece_type]
     w = int(round(rule["logo"]["width"]))
     h = int(round(rule["logo"]["height"]))
-    return _generate_house_logo_template(w, h)
+
+    official = _load_official_logo_template()
+    if official is None:
+        return _generate_house_logo_template(w, h)
+
+    return official.resize((w, h), Image.Resampling.LANCZOS)
 
 
 def _iter_scales(min_scale: float, max_scale: float, step: float) -> Iterable[float]:
@@ -235,7 +266,7 @@ def _detect_logo_on_canvas(image_canvas: Image.Image, piece_type: PieceType) -> 
             h = float(template_scaled.size[1])
             best_bbox = BBox(x=float(x), y=float(y), width=w, height=h)
 
-    # Empirical threshold for edge-based cosine similarity.
+    # Threshold for edge-based cosine similarity.
     if best_bbox is None or best_score < 0.42:
         return None, best_score
 
@@ -313,7 +344,83 @@ def _scale_bbox(bbox: BBox, sx: float, sy: float) -> BBox:
     return BBox(x=bbox.x * sx, y=bbox.y * sy, width=bbox.width * sx, height=bbox.height * sy)
 
 
-def validate_layout(image_bytes: bytes) -> dict:
+def _bbox_inside(inner: BBox, outer: BBox) -> bool:
+    return (
+        inner.x_min >= outer.x_min
+        and inner.y_min >= outer.y_min
+        and inner.x_max <= outer.x_max
+        and inner.y_max <= outer.y_max
+    )
+
+
+def _text_inside_safe_area(
+    *,
+    safe_area_original: BBox,
+    ocr_words: list[dict] | None,
+) -> bool:
+    if not ocr_words:
+        return True
+
+    for w in ocr_words:
+        box = w.get("box") if isinstance(w, dict) else None
+        if not (isinstance(box, list) and len(box) == 4):
+            continue
+
+        try:
+            x, y, width, height = (float(box[0]), float(box[1]), float(box[2]), float(box[3]))
+        except Exception:
+            continue
+
+        if width <= 0 or height <= 0:
+            continue
+
+        word_bbox = BBox(x=x, y=y, width=width, height=height)
+        if not _bbox_inside(word_bbox, safe_area_original):
+            return False
+
+    return True
+
+
+def _compute_layout_score(
+    *,
+    logo_detected: bool,
+    logo_inside_safe_area: bool,
+    logo_position_valid: bool,
+    logo_size_valid: bool,
+    logo_container_detected: bool,
+    logo_container_size_valid: bool,
+    text_inside_safe_area: bool,
+) -> int:
+    # Required score components:
+    # - safeAreaCompliance
+    # - logoPlacement
+    # - logoSize
+    # - containerSize
+    # - textInsideSafeArea
+    #
+    # IMPORTANT: logoDetected must NOT affect the score.
+    # Keep a fixed denominator so "logo no encontrado" doesn't change the score.
+    safe_area_compliance = logo_inside_safe_area if logo_detected else True
+    logo_placement = logo_position_valid if logo_detected else True
+    logo_size = logo_size_valid if logo_detected else True
+    container_size = (
+        True
+        if not logo_detected
+        else (not logo_container_detected) or logo_container_size_valid
+    )
+
+    checks: list[bool] = [
+        safe_area_compliance,
+        logo_placement,
+        logo_size,
+        container_size,
+        text_inside_safe_area,
+    ]
+
+    return int(round(100.0 * (sum(1 for c in checks if c) / len(checks)))) if checks else 0
+
+
+def validate_layout(image_bytes: bytes, ocr_words: list[dict] | None = None) -> dict:
     """Validate layout compliance for an uploaded image."""
     with Image.open(BytesIO(image_bytes)) as image:
         original_w, original_h = image.size
@@ -323,13 +430,17 @@ def validate_layout(image_bytes: bytes) -> dict:
             return {
                 "pieceType": None,
                 "logoDetected": False,
+                "logoWarning": False,
+                "logoBoundingBox": None,
                 "logoPosition": None,
                 "logoSizeValid": False,
                 "logoInsideSafeArea": False,
                 "logoPositionValid": False,
                 "logoContainerDetected": False,
+                "logoContainerBoundingBox": None,
                 "logoContainerPosition": None,
                 "logoContainerSizeValid": False,
+                "textInsideSafeArea": True,
                 "layoutScore": 0,
                 "safeAreaBoundingBox": None,
             }
@@ -344,19 +455,34 @@ def validate_layout(image_bytes: bytes) -> dict:
         safe_canvas = _safe_area_bbox_for_canvas(piece_type)
         safe_original = _scale_bbox(safe_canvas, sx, sy)
 
+        text_inside_safe_area = _text_inside_safe_area(safe_area_original=safe_original, ocr_words=ocr_words)
+
         logo_canvas, match_score = _detect_logo_on_canvas(image_canvas, piece_type)
         if logo_canvas is None:
+            layout_score = _compute_layout_score(
+                logo_detected=False,
+                logo_inside_safe_area=False,
+                logo_position_valid=False,
+                logo_size_valid=False,
+                logo_container_detected=False,
+                logo_container_size_valid=False,
+                text_inside_safe_area=text_inside_safe_area,
+            )
             return {
                 "pieceType": piece_type,
                 "logoDetected": False,
+                "logoWarning": True,
+                "logoBoundingBox": None,
                 "logoPosition": None,
                 "logoSizeValid": False,
                 "logoInsideSafeArea": False,
                 "logoPositionValid": False,
                 "logoContainerDetected": False,
+                "logoContainerBoundingBox": None,
                 "logoContainerPosition": None,
                 "logoContainerSizeValid": False,
-                "layoutScore": 0,
+                "textInsideSafeArea": text_inside_safe_area,
+                "layoutScore": layout_score,
                 "safeAreaBoundingBox": {
                     "x": safe_original.x,
                     "y": safe_original.y,
@@ -367,24 +493,18 @@ def validate_layout(image_bytes: bytes) -> dict:
 
         logo_original = _scale_bbox(logo_canvas, sx, sy)
 
-        expected_logo_w = float(rule["logo"]["width"]) * sx
-        expected_logo_h = float(rule["logo"]["height"]) * sy
+        expected_logo_w = float(rule["logo"]["width"])
+        expected_logo_h = float(rule["logo"]["height"])
         size_ok = (
-            abs(logo_original.width - expected_logo_w) <= expected_logo_w * 0.10
-            and abs(logo_original.height - expected_logo_h) <= expected_logo_h * 0.10
+            abs(logo_canvas.width - expected_logo_w) <= expected_logo_w * 0.10
+            and abs(logo_canvas.height - expected_logo_h) <= expected_logo_h * 0.10
         )
 
-        inside_safe = (
-            logo_original.x_min >= safe_original.x_min
-            and logo_original.y_min >= safe_original.y_min
-            and logo_original.x_max <= safe_original.x_max
-            and logo_original.y_max <= safe_original.y_max
-        )
+        inside_safe = _bbox_inside(logo_canvas, safe_canvas)
 
-        # Top-right region (relative, conservative)
-        rel_x = logo_original.center_x / max(1.0, float(original_w))
-        rel_y = logo_original.center_y / max(1.0, float(original_h))
-        position_ok = rel_x >= 0.62 and rel_y <= 0.30
+        expected_x = float(rule["logo"]["x"])
+        expected_y = float(rule["logo"]["y"])
+        position_ok = abs(logo_canvas.x - expected_x) <= 40.0 and abs(logo_canvas.y - expected_y) <= 40.0
 
         container_bbox_canvas = _detect_logo_container_on_canvas(image_canvas, piece_type, logo_canvas)
         container_detected = container_bbox_canvas is not None
@@ -393,22 +513,33 @@ def validate_layout(image_bytes: bytes) -> dict:
 
         if container_bbox_canvas is not None:
             container_original = _scale_bbox(container_bbox_canvas, sx, sy)
-            expected_cw = float(rule["logo_container"]["width"]) * sx
-            expected_ch = float(rule["logo_container"]["height"]) * sy
+            expected_cw = float(rule["logo_container"]["width"])
+            expected_ch = float(rule["logo_container"]["height"])
             container_size_ok = (
-                abs(container_original.width - expected_cw) <= expected_cw * 0.08
-                and abs(container_original.height - expected_ch) <= expected_ch * 0.08
+                abs(container_bbox_canvas.width - expected_cw) <= expected_cw * 0.10
+                and abs(container_bbox_canvas.height - expected_ch) <= expected_ch * 0.10
             )
 
-        checks: list[bool] = [inside_safe, size_ok, position_ok]
-        if container_detected:
-            checks.append(container_size_ok)
-
-        layout_score = int(round(100.0 * (sum(1 for c in checks if c) / len(checks)))) if checks else 0
+        layout_score = _compute_layout_score(
+            logo_detected=True,
+            logo_inside_safe_area=inside_safe,
+            logo_position_valid=position_ok,
+            logo_size_valid=size_ok,
+            logo_container_detected=container_detected,
+            logo_container_size_valid=container_size_ok,
+            text_inside_safe_area=text_inside_safe_area,
+        )
 
         return {
             "pieceType": piece_type,
             "logoDetected": True,
+            "logoWarning": False,
+            "logoBoundingBox": {
+                "x": logo_original.x,
+                "y": logo_original.y,
+                "width": logo_original.width,
+                "height": logo_original.height,
+            },
             "logoPosition": {
                 "x": logo_original.x,
                 "y": logo_original.y,
@@ -419,6 +550,16 @@ def validate_layout(image_bytes: bytes) -> dict:
             "logoInsideSafeArea": inside_safe,
             "logoPositionValid": position_ok,
             "logoContainerDetected": container_detected,
+            "logoContainerBoundingBox": (
+                None
+                if container_original is None
+                else {
+                    "x": container_original.x,
+                    "y": container_original.y,
+                    "width": container_original.width,
+                    "height": container_original.height,
+                }
+            ),
             "logoContainerPosition": (
                 None
                 if container_original is None
@@ -430,6 +571,7 @@ def validate_layout(image_bytes: bytes) -> dict:
                 }
             ),
             "logoContainerSizeValid": container_size_ok if container_detected else False,
+            "textInsideSafeArea": text_inside_safe_area,
             "layoutScore": layout_score,
             "safeAreaBoundingBox": {
                 "x": safe_original.x,

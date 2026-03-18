@@ -133,13 +133,17 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
         pieceType?: unknown;
         safeAreaBoundingBox?: unknown;
         logoDetected?: unknown;
+        logoWarning?: unknown;
+        logoBoundingBox?: unknown;
         logoPosition?: unknown;
         logoSizeValid?: unknown;
         logoInsideSafeArea?: unknown;
         logoPositionValid?: unknown;
         logoContainerDetected?: unknown;
+        logoContainerBoundingBox?: unknown;
         logoContainerPosition?: unknown;
         logoContainerSizeValid?: unknown;
+        textInsideSafeArea?: unknown;
         layoutScore?: unknown;
       }
     | undefined;
@@ -153,13 +157,33 @@ function normalizeAnalyzeResponse(payload: unknown): AnalyzeResponse {
               : null,
           safeAreaBoundingBox: isBoundingBox(rawLayout.safeAreaBoundingBox) ? rawLayout.safeAreaBoundingBox : null,
           logoDetected: rawLayout.logoDetected === true,
-          logoPosition: isBoundingBox(rawLayout.logoPosition) ? rawLayout.logoPosition : null,
+          logoWarning: rawLayout.logoWarning === true,
+          logoBoundingBox: isBoundingBox(rawLayout.logoBoundingBox)
+            ? rawLayout.logoBoundingBox
+            : isBoundingBox(rawLayout.logoPosition)
+              ? rawLayout.logoPosition
+              : null,
+          logoPosition: isBoundingBox(rawLayout.logoPosition)
+            ? rawLayout.logoPosition
+            : isBoundingBox(rawLayout.logoBoundingBox)
+              ? rawLayout.logoBoundingBox
+              : null,
           logoSizeValid: rawLayout.logoSizeValid === true,
           logoInsideSafeArea: rawLayout.logoInsideSafeArea === true,
           logoPositionValid: rawLayout.logoPositionValid === true,
           logoContainerDetected: rawLayout.logoContainerDetected === true,
-          logoContainerPosition: isBoundingBox(rawLayout.logoContainerPosition) ? rawLayout.logoContainerPosition : null,
+          logoContainerBoundingBox: isBoundingBox(rawLayout.logoContainerBoundingBox)
+            ? rawLayout.logoContainerBoundingBox
+            : isBoundingBox(rawLayout.logoContainerPosition)
+              ? rawLayout.logoContainerPosition
+              : null,
+          logoContainerPosition: isBoundingBox(rawLayout.logoContainerPosition)
+            ? rawLayout.logoContainerPosition
+            : isBoundingBox(rawLayout.logoContainerBoundingBox)
+              ? rawLayout.logoContainerBoundingBox
+              : null,
           logoContainerSizeValid: rawLayout.logoContainerSizeValid === true,
+          textInsideSafeArea: rawLayout.textInsideSafeArea === false ? false : true,
           layoutScore:
             typeof rawLayout.layoutScore === "number" && Number.isFinite(rawLayout.layoutScore)
               ? rawLayout.layoutScore

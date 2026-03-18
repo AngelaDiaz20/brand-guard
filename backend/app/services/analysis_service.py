@@ -27,7 +27,7 @@ async def analyze_upload(file: UploadFile, guidelines_path: Path) -> AnalyzeResp
         )
         ocr_result = run_ocr(file_bytes)
         validation = validate_technical_requirements(metadata, guidelines)
-        layout_validation = validate_layout(file_bytes)
+        layout_validation = validate_layout(file_bytes, ocr_words=ocr_result.get("words") if isinstance(ocr_result, dict) else None)
         return AnalyzeResponse(
             meta=metadata,
             technical_validation=validation,

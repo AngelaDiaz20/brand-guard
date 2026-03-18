@@ -1,12 +1,19 @@
 import type { LayoutValidation } from "@/types/analysis";
 
-function StatusPill({ ok, label }: { ok: boolean; label: string }) {
+type PillVariant = "ok" | "error" | "warning" | "na";
+
+function StatusPill({ variant, label }: { variant: PillVariant; label: string }) {
+  const styles =
+    variant === "ok"
+      ? "bg-emerald-200 text-emerald-800"
+      : variant === "warning"
+        ? "bg-amber-200 text-amber-900"
+        : variant === "na"
+          ? "bg-slate-200 text-slate-800"
+          : "bg-red-200 text-red-800";
+
   return (
-    <span
-      className={`rounded-full px-2 py-1 text-xs font-semibold ${
-        ok ? "bg-emerald-200 text-emerald-800" : "bg-red-200 text-red-800"
-      }`}
-    >
+    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${styles}`}>
       {label}
     </span>
   );
@@ -15,24 +22,40 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
 function Row({
   title,
   description,
-  ok,
+  status,
   okLabel = "OK",
-  failLabel = "ERROR"
+  failLabel = "ERROR",
+  warnLabel = "ADVERTENCIA",
+  naLabel = "NO APLICA"
 }: {
   title: string;
   description: string;
-  ok: boolean;
+  status: PillVariant;
   okLabel?: string;
   failLabel?: string;
+  warnLabel?: string;
+  naLabel?: string;
 }) {
+  const cardStyles =
+    status === "ok"
+      ? "border-emerald-200 bg-emerald-50"
+      : status === "warning"
+        ? "border-amber-200 bg-amber-50"
+        : status === "na"
+          ? "border-slate-200 bg-slate-50"
+          : "border-red-200 bg-red-50";
+
+  const pillLabel =
+    status === "ok" ? okLabel : status === "warning" ? warnLabel : status === "na" ? naLabel : failLabel;
+
   return (
-    <article className={`rounded-xl border p-4 ${ok ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+    <article className={`rounded-xl border p-4 ${cardStyles}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
           <p className="mt-1 text-xs text-slate-600">{description}</p>
         </div>
-        <StatusPill ok={ok} label={ok ? okLabel : failLabel} />
+        <StatusPill variant={status} label={pillLabel} />
       </div>
     </article>
   );
@@ -53,7 +76,7 @@ export function LayoutValidationPanel({ layout }: { layout: LayoutValidation | n
   const pieceLabel =
     layout.pieceType === "1:1" ? "1:1 (Cuadrado)" : layout.pieceType === "ST" ? "ST (Story)" : "No reconocido";
 
-  const containerOk = !layout.logoContainerDetected || layout.logoContainerSizeValid;
+  const hasLogo = layout.logoDetected;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -71,37 +94,53 @@ export function LayoutValidationPanel({ layout }: { layout: LayoutValidation | n
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <Row
           title="Logo detectado"
-          description="Se detecta el ícono de casa mediante template matching."
-          ok={layout.logoDetected}
+          description={
+            layout.logoDetected
+              ? "Se detectó el ícono de casa mediante template matching."
+              : "Advertencia: logo no encontrado (no afecta el puntaje)."
+          }
+          status={layout.logoDetected ? "ok" : "warning"}
         />
         <Row
           title="Logo dentro del área segura"
           description="El logo debe quedar completamente dentro del área segura."
-          ok={layout.logoInsideSafeArea}
+          status={!hasLogo ? "na" : layout.logoInsideSafeArea ? "ok" : "error"}
         />
         <Row
           title="Tamaño del logo correcto"
           description="Tolerancia permitida: ±10% sobre el tamaño oficial."
-          ok={layout.logoSizeValid}
+          status={!hasLogo ? "na" : layout.logoSizeValid ? "ok" : "error"}
         />
         <Row
           title="Posición del logo correcta"
-          description="El logo debe aparecer en la zona superior derecha."
-          ok={layout.logoPositionValid}
+          description="Tolerancia permitida: ±40 px sobre la posición oficial."
+          status={!hasLogo ? "na" : layout.logoPositionValid ? "ok" : "error"}
         />
         <Row
-          title="Contenedor del logo (opcional)"
+          title="Contenedor del logo válido"
           description={
-            layout.logoContainerDetected
-              ? "Se detectó contenedor: se valida su tamaño (±8%)."
-              : "No se detectó contenedor; el activo sigue siendo válido."
+            !hasLogo
+              ? "Sin logo detectado: no se valida contenedor."
+              : layout.logoContainerDetected
+                ? "Se detectó contenedor: se valida su tamaño (±10%)."
+                : "No se detectó contenedor; el activo sigue siendo válido."
           }
-          ok={containerOk}
-          okLabel={layout.logoContainerDetected ? "OK" : "NO APLICA"}
-          failLabel="ERROR"
+          status={
+            !hasLogo
+              ? "na"
+              : layout.logoContainerDetected
+                ? layout.logoContainerSizeValid
+                  ? "ok"
+                  : "error"
+                : "na"
+          }
+        />
+        <Row
+          title="Texto dentro del área segura"
+          description="Todos los bloques de texto detectados por OCR deben quedar dentro del área segura."
+          status={layout.textInsideSafeArea ? "ok" : "error"}
         />
       </div>
     </section>
   );
 }
-
