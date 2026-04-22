@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.models.response_model import AnalyzeResponse
@@ -24,6 +24,17 @@ app.add_middleware(
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze_file(file: UploadFile = File(...)) -> AnalyzeResponse:
+async def analyze_file(
+    file: UploadFile = File(...),
+    excel_file: UploadFile | None = File(default=None, alias="excel_file"),
+    piece_format: str | None = Form(default=None, alias="piece_format"),
+    debug: bool = Form(default=False, alias="debug"),
+) -> AnalyzeResponse:
     """Analyze image/PDF metadata and validate technical requirements."""
-    return await analyze_upload(file=file, guidelines_path=GUIDELINES_PATH)
+    return await analyze_upload(
+        file=file,
+        guidelines_path=GUIDELINES_PATH,
+        excel_file=excel_file,
+        piece_format=piece_format,
+        debug=debug,
+    )

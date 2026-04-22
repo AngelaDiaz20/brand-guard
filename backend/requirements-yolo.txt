@@ -1,0 +1,11 @@
+# Optional dependencies for YOLO semantic region detection (Ultralytics).
+#
+# This is intentionally separate from `requirements.txt` because Ultralytics typically pulls heavy
+# runtime dependencies (Torch). Install only if you plan to enable YOLO in
+# `backend/app/config/excel_validation_config.json`.
+#
+# Example:
+#   pip install -r requirements.txt
+#   pip install -r requirements-yolo.txt
+#
+ultralytics>=8.2.0,<9.0.0

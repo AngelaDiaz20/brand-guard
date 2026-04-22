@@ -8,7 +8,21 @@ import { UploadArea } from "@/components/upload/UploadArea";
 import { useBatchImageAnalysis } from "@/features/analysis/useBatchImageAnalysis";
 
 export function AnalyzeAssetView() {
-  const { items, isBusy, errorMessage, infoMessage, addFiles, removeItem, clearBatch, analyzeBatch, retryItem } =
+  const {
+    items,
+    isBusy,
+    errorMessage,
+    infoMessage,
+    excelFile,
+    setExcelFile,
+    pieceFormat,
+    setPieceFormat,
+    addFiles,
+    removeItem,
+    clearBatch,
+    analyzeBatch,
+    retryItem
+  } =
     useBatchImageAnalysis({ maxConcurrency: 3 });
 
   const singleItem = items.length === 1 ? items[0] : null;
@@ -26,6 +40,10 @@ export function AnalyzeAssetView() {
           onRemoveItem={removeItem}
           onClearSelection={clearBatch}
           onAnalyze={analyzeBatch}
+          excelFile={excelFile}
+          pieceFormat={pieceFormat}
+          onExcelSelected={setExcelFile}
+          onPieceFormatChanged={setPieceFormat}
         />
 
         {singleItem && (

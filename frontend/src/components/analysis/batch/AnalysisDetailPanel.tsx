@@ -12,6 +12,8 @@ import { OCRPanel } from "@/components/results/OCRPanel";
 import { ValidationCard } from "@/components/results/ValidationCard";
 import { DisclosureSection } from "@/components/ui/DisclosureSection";
 import { ScoreSummary } from "@/components/analysis/batch/ScoreSummary";
+import { StructuredFieldsPanel } from "@/components/results/StructuredFieldsPanel";
+import { ExcelValidationPanel } from "@/components/results/ExcelValidationPanel";
 
 interface AnalysisDetailPanelProps {
   result: AnalyzeResponse;
@@ -74,6 +76,21 @@ export function AnalysisDetailPanel({ result, preview }: AnalysisDetailPanelProp
       <DisclosureSection title="OCR" defaultOpen={false}>
         <OCRPanel ocr={result.ocr ?? null} />
       </DisclosureSection>
+
+      {(result.structuredFields || result.priceBlockAnalysis) && (
+        <DisclosureSection title="Extracción estructurada" defaultOpen={false}>
+          <StructuredFieldsPanel
+            fields={result.structuredFields ?? null}
+            priceBlockAnalysis={result.priceBlockAnalysis ?? null}
+          />
+        </DisclosureSection>
+      )}
+
+      {result.excelValidation && (
+        <DisclosureSection title="Validación con Excel" defaultOpen={false}>
+          <ExcelValidationPanel validation={result.excelValidation ?? null} />
+        </DisclosureSection>
+      )}
 
       <DisclosureSection title="Validación de layout" defaultOpen={false}>
         <LayoutValidationPanel layout={result.layoutValidation ?? null} />

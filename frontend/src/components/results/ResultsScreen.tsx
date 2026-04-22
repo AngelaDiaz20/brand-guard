@@ -7,6 +7,8 @@ import { MetadataPanel } from "@/components/results/MetadataPanel";
 import { ScoreCard } from "@/components/results/ScoreCard";
 import { ValidationCard } from "@/components/results/ValidationCard";
 import { LayoutValidationPanel } from "@/components/results/LayoutValidationPanel";
+import { StructuredFieldsPanel } from "@/components/results/StructuredFieldsPanel";
+import { ExcelValidationPanel } from "@/components/results/ExcelValidationPanel";
 
 interface ResultsScreenProps {
   data: AnalyzeResponse;
@@ -50,6 +52,18 @@ export function ResultsScreen({ data }: ResultsScreenProps) {
         </pre>*/}
         <OCRPanel ocr={data.ocr ?? null} />
       </div>
+
+      {(data.structuredFields || data.priceBlockAnalysis) && (
+        <div className="lg:col-span-2">
+          <StructuredFieldsPanel fields={data.structuredFields ?? null} priceBlockAnalysis={data.priceBlockAnalysis ?? null} />
+        </div>
+      )}
+
+      {data.excelValidation && (
+        <div className="lg:col-span-2">
+          <ExcelValidationPanel validation={data.excelValidation ?? null} />
+        </div>
+      )}
 
       <div className="lg:col-span-2">
         <LayoutValidationPanel layout={data.layoutValidation ?? null} />

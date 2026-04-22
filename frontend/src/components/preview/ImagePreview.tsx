@@ -85,6 +85,38 @@ export function ImagePreview({ fileUrl, fileType, result }: ImagePreviewProps) {
       const sx = displayW / meta.width;
       const sy = displayH / meta.height;
 
+      const yoloRegions = result?.ocr?.yoloDetections ?? null;
+      if (Array.isArray(yoloRegions) && yoloRegions.length > 0) {
+        const max = Math.min(10, yoloRegions.length);
+        for (let i = 0; i < max; i++) {
+          const r = yoloRegions[i];
+          const [x, y, w, h] = r.bbox;
+          drawBox(
+            ctx,
+            { x: x * sx, y: y * sy, width: w * sx, height: h * sy },
+            "rgba(234, 179, 8, 0.85)",
+            r.className ? `YOLO: ${r.className}` : `YOLO: ${r.id}`,
+            { dashed: true }
+          );
+        }
+      }
+
+      const ocrRegions = result?.ocr?.regions ?? null;
+      if (Array.isArray(ocrRegions) && ocrRegions.length > 0) {
+        const max = Math.min(10, ocrRegions.length);
+        for (let i = 0; i < max; i++) {
+          const r = ocrRegions[i];
+          const [x, y, w, h] = r.bbox;
+          drawBox(
+            ctx,
+            { x: x * sx, y: y * sy, width: w * sx, height: h * sy },
+            "rgba(168, 85, 247, 0.85)",
+            r.className ? `OCR: ${r.className}` : `OCR: ${r.id}`,
+            { dashed: true }
+          );
+        }
+      }
+
       const safe =
         layout.safeAreaBoundingBox ??
         (() => {

@@ -47,11 +47,15 @@ async function allSettledWithConcurrency<TInput, TValue>(
 export type BatchAnalyzeOrder = "nombre" | "estado" | "score_alto" | "score_bajo";
 export type BatchAnalyzeFilter = "todas" | "correctas" | "alertas" | "error";
 
+export type PieceFormat = "auto" | "slideshow" | "mtlk";
+
 export function useBatchImageAnalysis({ maxConcurrency = 3 }: { maxConcurrency?: number } = {}) {
   const [items, setItems] = useState<AnalysisItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [pieceFormat, setPieceFormat] = useState<PieceFormat>("auto");
 
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const runIdRef = useRef<string | null>(null);
@@ -145,6 +149,8 @@ export function useBatchImageAnalysis({ maxConcurrency = 3 }: { maxConcurrency?:
     setItems([]);
     setErrorMessage(null);
     setInfoMessage(null);
+    setExcelFile(null);
+    setPieceFormat("auto");
   };
 
   const analyzeIds = async (ids: string[]) => {
@@ -153,6 +159,9 @@ export function useBatchImageAnalysis({ maxConcurrency = 3 }: { maxConcurrency?:
     if (targets.length === 0) {
       return;
     }
+
+    const excelSnapshot = excelFile;
+    const pieceFormatSnapshot = pieceFormat;
 
     const runId = createLocalId("lote");
     runIdRef.current = runId;
@@ -197,29 +206,36 @@ export function useBatchImageAnalysis({ maxConcurrency = 3 }: { maxConcurrency?:
           throw new Error("No se encontró el archivo asociado a esta pieza.");
         }
 
-        const output = await analyzeImage(file, (progressPercent) => {
-          if (runIdRef.current !== runId) {
-            return;
+        const output = await analyzeImage(
+          file,
+          {
+            excelFile: excelSnapshot,
+            pieceFormat: pieceFormatSnapshot === "auto" ? null : pieceFormatSnapshot
+          },
+          (progressPercent) => {
+            if (runIdRef.current !== runId) {
+              return;
+            }
+
+            setItems((previous) =>
+              previous.map((current) => {
+                if (current.id !== item.id) {
+                  return current;
+                }
+                if (current.state !== "subiendo" && current.state !== "analizando") {
+                  return current;
+                }
+
+                const normalized = Math.max(0, Math.min(100, Math.round(progressPercent)));
+                return {
+                  ...current,
+                  progressPercent: normalized,
+                  state: normalized >= 100 ? "analizando" : "subiendo"
+                };
+              })
+            );
           }
-
-          setItems((previous) =>
-            previous.map((current) => {
-              if (current.id !== item.id) {
-                return current;
-              }
-              if (current.state !== "subiendo" && current.state !== "analizando") {
-                return current;
-              }
-
-              const normalized = Math.max(0, Math.min(100, Math.round(progressPercent)));
-              return {
-                ...current,
-                progressPercent: normalized,
-                state: normalized >= 100 ? "analizando" : "subiendo"
-              };
-            })
-          );
-        });
+        );
 
         return { id: item.id, output };
       }
@@ -301,6 +317,10 @@ export function useBatchImageAnalysis({ maxConcurrency = 3 }: { maxConcurrency?:
     loading,
     errorMessage,
     infoMessage,
+    excelFile,
+    setExcelFile,
+    pieceFormat,
+    setPieceFormat,
     addFiles,
     removeItem,
     clearBatch,

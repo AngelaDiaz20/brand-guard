@@ -72,6 +72,12 @@ API docs disponibles en:
 
 Recibe una imagen en el campo `file` y retorna metadata + validación técnica.
 
+Campos opcionales (multipart):
+
+- `piece_format`: habilita capas opcionales por formato (por ejemplo extracción estructurada)
+- `excel_file`: validación opcional contra Excel (si aplica)
+- `debug`: `true/false` para incluir trazabilidad adicional (regiones/YOLO/OCR por región)
+
 ### Ejemplo con curl
 
 ```bash
@@ -110,3 +116,9 @@ Las reglas se leen dinámicamente desde:
 - `app/config/sodimac_guidelines.json`
 
 Puedes ajustar allí límites de tamaño, dimensiones y formatos permitidos sin cambiar código.
+
+## OCR por regiones (YOLO)
+
+Documentación de la capa incremental (sin romper el pipeline actual):
+
+- `docs/yolo_region_ocr.md`
